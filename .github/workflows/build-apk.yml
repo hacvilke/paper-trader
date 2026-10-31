@@ -23,16 +23,12 @@ jobs:
         with:
           gradle-version: "8.7"
 
-      - name: Install Android SDK (API 34 + Build-Tools 34.0.0)
+      - name: Install Android SDK packages (API 34 + Build-Tools 34.0.0)
         run: |
-          ANDROID_HOME=$HOME/android-sdk
-          mkdir -p "$ANDROID_HOME/cmdline-tools"
-          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip -q commandlinetools-linux-11076708_latest.zip -d "$ANDROID_HOME/cmdline-tools"
-          mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-34" "build-tools;34.0.0" > /dev/null
-          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          SDK="${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"
+          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$SDK/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-34" "build-tools;34.0.0" > /dev/null
+          "$SDK/cmdline-tools/latest/bin/sdkmanager" --list_installed | head -8
 
       - name: Build APKs (debug-signed, installable)
         run: gradle -p android assembleDebug assembleRelease --no-daemon
