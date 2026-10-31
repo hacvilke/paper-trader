@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: paper-trader
+    runtime: docker
+    plan: free
+    healthCheckPath: /
+    # free tier sleeps after idle; first visit wakes it (~40s)

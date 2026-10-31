@@ -2,5 +2,5 @@
 <resources>
     <string name="app_name">Paper Trader</string>
     <!-- point this at wherever the game is deployed -->
-    <string name="game_url">https://3000-iwyun5trgcgcci0rih8xd.e2b.app</string>
+    <string name="game_url">https://hacvilke.github.io/paper-trader/</string>
 </resources>
