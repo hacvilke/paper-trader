@@ -33,7 +33,7 @@ public class MainActivity extends Activity {
 
         web.setWebViewClient(new WebViewClient() {
             @Override
-            public void onPageFinished(View v, String url) {
+            public void onPageFinished(WebView v, String url) {
                 // let the paper background show through any gap flashes
                 web.setBackgroundColor(0xFF7C4F28);
             }
