@@ -4,7 +4,7 @@ Same pipeline as VortexEngine: **Gradle project + GitHub Actions → signed APK 
 
 ## One-time: put the game on GitHub
 
-1. Create a repo (e.g. `paper-trader`), push this whole folder up.
+1. Repo: **https://github.com/hacvilke/paper-trader** (already live — CI runs on every push).
 2. Point the APK at your deployed game: edit
    `android/app/src/main/res/values/strings.xml` → `game_url`.
    (Any HTTPS deploy works: Vercel, your own box, the sandbox preview.)
@@ -29,3 +29,10 @@ targetSdk 34 — tested config for Android 14 entry-level phones.
 
 > Tip: the site is also a PWA — "Add to Home Screen" from Chrome installs
 > instantly without any APK. The APK is the "real app" version.
+
+## Current build
+
+- v1.0.0 APKs are committed under `apk/` (release + debug) and attached to the
+  first Actions run. Rebuild anytime: Actions → Build Paper Trader APK.
+- The app points at the deployed game (see strings.xml). All accounts, saves
+  and the live leaderboard live on that server — phone and browser share one desk.
