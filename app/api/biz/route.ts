@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { db } from "@/lib/db";
+import { rateLimit, tooMany } from "@/lib/ratelimit";
 
 /**
  * Business registry — company tickers are globally unique across all
@@ -33,6 +34,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  if (!rateLimit(req, "biz", 5, 60_000)) return tooMany();
   try {
     const body = await req.json();
     const sym = String(body.sym ?? "").toUpperCase();

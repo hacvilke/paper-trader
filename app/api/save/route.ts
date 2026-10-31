@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 import { db } from "@/lib/db";
+import { rateLimit, tooMany } from "@/lib/ratelimit";
 
 /**
  * The file cabinet — one save per badge (or the guest slot "main"),
@@ -85,6 +86,7 @@ export async function GET(req: Request) {
 }
 
 async function put(req: Request) {
+  if (!rateLimit(req, "save", 30, 60_000)) return tooMany();
   let body: unknown;
   try {
     body = await req.json();

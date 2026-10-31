@@ -31,12 +31,14 @@ export async function GET() {
   if (pool) {
     try {
       const r = await pool.query("SELECT uname, state, saved_at FROM saves");
-      const rows: Row[] = r.rows.map((x) => ({
-        user: x.uname,
-        worth: worthOf(x.state),
-        day: Math.floor(((x.state as { tick?: number }).tick ?? 0) / 26) + 1,
-        updated: Number(x.saved_at) || 0,
-      }));
+      const rows: Row[] = r.rows
+        .filter((x) => x.uname !== "main") // guests stay off the board
+        .map((x) => ({
+          user: x.uname,
+          worth: worthOf(x.state),
+          day: Math.floor(((x.state as { tick?: number }).tick ?? 0) / 26) + 1,
+          updated: Number(x.saved_at) || 0,
+        }));
       rows.sort((a, b) => b.worth - a.worth);
       return NextResponse.json({ ok: true, rows: rows.slice(0, 12) });
     } catch (e) {

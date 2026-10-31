@@ -40,7 +40,7 @@ export default function StockDetail({
       .fetch("/api/feed", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user: auth.user, text }),
+        body: JSON.stringify({ user: auth.user, text, token: auth.token }),
       })
       .catch(() => {});
   };

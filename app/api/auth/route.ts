@@ -3,6 +3,7 @@ import { readFile, writeFile, mkdir } from "fs/promises";
 import { createHash, randomBytes } from "crypto";
 import path from "path";
 import { db } from "@/lib/db";
+import { rateLimit, tooMany } from "@/lib/ratelimit";
 
 /**
  * Press-badge auth: trader name + 4-6 digit PIN, hashed (sha256+salt).
@@ -25,6 +26,7 @@ const hashOf = (user: string, salt: string, pin: string) =>
   createHash("sha256").update(`${salt}|${user}|${pin}`).digest("hex");
 
 export async function POST(req: Request) {
+  if (!rateLimit(req, "auth", 10, 60_000)) return tooMany();
   let body: { mode?: string; user?: string; pin?: string };
   try {
     body = await req.json();

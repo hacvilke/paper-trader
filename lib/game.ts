@@ -21,6 +21,8 @@ export const DAILY_LOAN_RATE = 0.005; // interest charged at each closing bell
 export const SHORT_CAP = 0.25; // a new short position ≤ 25% of cash + holdings
 export const MARGIN_CALL_AT = 0.55; // forced cover when liability > 55% of assets
 export const SHORT_BORROW_RATE = 0.002; // daily borrow fee on short liability
+export const MILESTONES = [11_000, 15_000, 25_000, 50_000, 100_000, 250_000, 1_000_000];
+
 export const REWARD_MIN = 15;
 export const REWARD_MAX = 60;
 
@@ -33,6 +35,31 @@ export const FACT_FIRE_FEE = 8;
 export const FACT_ADVERT_COST = 30;
 export const FACT_BONUS_PER_WORKER = 4;
 export const FACT_EMERGENCY_AID = 40;
+
+// ---- industries: every founded business rolls its own economics ----
+export type Industry = {
+  id: string;
+  label: string;
+  unit: string; // what one machine makes
+  fair: number; // fair unit price
+  wage: number; // per worker per day
+  demand: number; // base daily demand before rep/ads/price
+  out: number; // units per machine per day at full staff
+  mach0: number; // first machine cost
+  blurb: string;
+};
+
+export const INDUSTRIES: Industry[] = [
+  { id: "paper",  label: "Paper & Pulp",    unit: "reams",  fair: 3.0, wage: 2.0, demand: 14, out: 22, mach0: 120, blurb: "the classic. steady, honest, papery." },
+  { id: "tech",   label: "Tech & Gadgets",  unit: "units",  fair: 12.0, wage: 4.0, demand: 8,  out: 9,  mach0: 260, blurb: "fat margins, pricey machines, picky buyers." },
+  { id: "coffee", label: "Coffee Roastery", unit: "bags",   fair: 5.5, wage: 2.6, demand: 18, out: 16, mach0: 150, blurb: "caffeine demand never sleeps. neither do you." },
+  { id: "toys",   label: "Toy Workshop",    unit: "toys",   fair: 4.2, wage: 2.2, demand: 16, out: 18, mach0: 135, blurb: "delight children, dodge paper-cut lawsuits." },
+  { id: "media",  label: "Print Media",     unit: "copies", fair: 2.2, wage: 1.6, demand: 26, out: 30, mach0: 95,  blurb: "a volume game: cheap presses, thinner margins." },
+  { id: "sport",  label: "Sports Goods",    unit: "kits",   fair: 7.5, wage: 3.0, demand: 10, out: 12, mach0: 190, blurb: "sports equipment — margins you can bounce." },
+];
+
+export const industryOf = (f: Factory) =>
+  INDUSTRIES.find((i) => i.id === f.ind) ?? INDUSTRIES[0];
 export const IPO_DAY = 10; // business days before you may list
 export const IPO_PROFIT = 750; // lifetime net profit needed
 export const FOUNDER_SHARES = 60;
@@ -49,6 +76,7 @@ export type Factory = {
   name: string; // the company YOU founded — unique per trader
   sym: string; // its ticker, reserved globally at founding
   founded: boolean;
+  ind: string; // industry id — every business rolls its own economics
   cash: number;
   reams: number;
   price: number;
@@ -70,6 +98,11 @@ export type Factory = {
   ipoPrice: number; // FOLD7 & SMUD both started here
 };
 
+export function machineCost(f: Factory) {
+  const ind = industryOf(f);
+  return Math.round(ind.mach0 * Math.pow(1.4, f.machines - 1));
+}
+
 /** derive a 3-4 letter ticker from a company name */
 export function symFromName(name: string): string {
   const letters = name.toUpperCase().replace(/[^A-Z]/g, "");
@@ -82,12 +115,8 @@ export function symFromName(name: string): string {
   return sym.slice(0, 4);
 }
 
-export function machineCost(machines: number) {
-  return Math.round(120 * Math.pow(1.4, machines - 1));
-}
-
-export function priceWord(price: number) {
-  const r = price / FACT_FAIR_PRICE;
+export function priceWord(price: number, fair = FACT_FAIR_PRICE) {
+  const r = price / fair;
   if (r < 0.8) return "bargain";
   if (r < 1.2) return "fair";
   if (r < 1.7) return "premium";
@@ -180,6 +209,7 @@ export type GameState = {
   bonusesTotal: number;
   pendingCheck: { amount: number; day: number } | null;
   factory: Factory;
+  milestones?: number[];
   seq: number;
   tut: boolean;
 };
@@ -206,7 +236,8 @@ export type Action =
   | { type: "FACT_PAY_ME"; amt: number }
   | { type: "FACT_INJECT"; amt: number }
   | { type: "FACT_IPO" }
-  | { type: "FOUND_BIZ"; name: string; sym: string }
+  | { type: "FOUND_BIZ"; name: string; sym: string; ind?: string }
+  | { type: "MILESTONE"; amt: number }
   | { type: "HYDRATE"; state: GameState };
 
 const DEFS: Array<
@@ -375,6 +406,7 @@ export function initialGame(): GameState {
       name: "",
       sym: "",
       founded: false,
+      ind: "paper",
       cash: 150,
       reams: 40,
       price: 3.0,
@@ -499,11 +531,11 @@ function applyImpact(
 }
 
 const FACT_EVENTS: Array<{ text: string; tone: "good" | "bad" | "info"; apply: (f: Factory) => void }> = [
-  { text: "City hall ordered 60 reams of letterhead. Paid on the spot, rep up.", tone: "good", apply: (f) => { f.cash += 60; f.rep = Math.min(100, f.rep + 3); } },
-  { text: "The local school bought 20 reams at a premium. Teachers never haggle.", tone: "good", apply: (f) => { f.cash += Math.round(20 * f.price * 1.2 * 100) / 100; f.reams = Math.max(0, f.reams - 20); f.reamsSold += 20; f.revenue = Math.round((f.revenue + 20 * f.price * 1.2) * 100) / 100; } },
+  { text: "City hall ordered 60 {u} of letterhead. Paid on the spot, rep up.", tone: "good", apply: (f) => { f.cash += 60; f.rep = Math.min(100, f.rep + 3); } },
+  { text: "The local school bought 20 {u} at a premium. Teachers never haggle.", tone: "good", apply: (f) => { f.cash += Math.round(20 * f.price * 1.2 * 100) / 100; f.reams = Math.max(0, f.reams - 20); f.reamsSold += 20; f.revenue = Math.round((f.revenue + 20 * f.price * 1.2) * 100) / 100; } },
   { text: "A paperfluencer posted your mill. Free ads for 2 days!", tone: "good", apply: (f) => { f.ads += 2; } },
-  { text: "Supplier overstock sale: +25 reams of free pulp. Smells like victory.", tone: "good", apply: (f) => { f.reams += 25; } },
-  { text: "Machine № 1 jammed. Ten reams came out as modern art.", tone: "bad", apply: (f) => { f.reams = Math.max(0, f.reams - 10); } },
+  { text: "Supplier overstock sale: +25 {u} of free stock. Smells like victory.", tone: "good", apply: (f) => { f.reams += 25; } },
+  { text: "Machine № 1 jammed. Ten {u} came out as modern art.", tone: "bad", apply: (f) => { f.reams = Math.max(0, f.reams - 10); } },
   { text: "Paper-cut lawsuit settled out of court. It cost you.", tone: "bad", apply: (f) => { f.cash = Math.max(0, f.cash - 25); } },
   { text: "The coffee machine broke. Morale says the office is now a lie.", tone: "bad", apply: (f) => { f.morale = Math.max(0, f.morale - 8); } },
   { text: "Union picnic approved. Money well spent, morale up.", tone: "info", apply: (f) => { f.cash = Math.max(0, f.cash - 12); f.morale = Math.min(100, f.morale + 6); } },
@@ -578,6 +610,7 @@ export function ipoReady(f: Factory) {
 
 /** one business day at the factory, run at every closing bell */
 export function simFactory(f0: Factory, day: number): Factory {
+  const ind = industryOf(f0);
   const f: Factory = {
     ...f0,
     morale: f0.morale,
@@ -592,13 +625,13 @@ export function simFactory(f0: Factory, day: number): Factory {
   // production
   const staffing = Math.min(1, f.workers / Math.max(1, f.machines * 2));
   const strike = f.morale < 25;
-  let made = Math.round(f.machines * 22 * staffing * (0.6 + f.morale / 250));
+  let made = Math.round(f.machines * ind.out * staffing * (0.6 + f.morale / 250));
   if (strike) made = Math.round(made / 2);
   f.reams += made;
 
   // demand & sales
-  const pf = Math.min(2.4, Math.max(0.12, Math.pow(FACT_FAIR_PRICE / f.price, 1.35)));
-  const demand = Math.round((14 + f.rep * 0.45 + f.ads * 15) * pf);
+  const pf = Math.min(2.4, Math.max(0.12, Math.pow(ind.fair / f.price, 1.35)));
+  const demand = Math.round((ind.demand + f.rep * 0.45 + f.ads * 15) * pf);
   const sold = Math.min(f.reams, demand);
   f.reams -= sold;
   f.reamsSold += sold;
@@ -606,7 +639,7 @@ export function simFactory(f0: Factory, day: number): Factory {
   f.revenue = Math.round((f.revenue + revenue) * 100) / 100;
 
   // costs
-  const dues = Math.round((f.workers * FACT_WAGE + f.machines * FACT_MAINT) * 100) / 100;
+  const dues = Math.round((f.workers * ind.wage + f.machines * FACT_MAINT) * 100) / 100;
   let paid = dues;
   if (f.cash >= dues) {
     f.cash = Math.round((f.cash - dues) * 100) / 100;
@@ -621,7 +654,7 @@ export function simFactory(f0: Factory, day: number): Factory {
 
   // reputation & morale drift
   if (sold >= demand && demand > 0) f.rep = Math.min(100, f.rep + 1);
-  if (f.price > FACT_FAIR_PRICE * 1.6) f.rep = Math.max(0, f.rep - 1);
+  if (f.price > ind.fair * 1.6) f.rep = Math.max(0, f.rep - 1);
   f.morale += (50 - f.morale) * 0.06;
   f.morale = Math.min(100, Math.max(0, f.morale));
   if (strike) note("Morale is in the gutter — the line is running at half speed.", "bad");
@@ -633,7 +666,7 @@ export function simFactory(f0: Factory, day: number): Factory {
   if (Math.random() < 0.22) {
     const ev = FACT_EVENTS[Math.floor(Math.random() * FACT_EVENTS.length)];
     ev.apply(f);
-    note(ev.text, ev.tone);
+    note(ev.text.replace(/\{u\}/g, ind.unit), ev.tone);
   }
 
   // mercy overdraft
@@ -1248,12 +1281,14 @@ export function reducer(state: GameState, action: Action): GameState {
       const name = action.name.trim().slice(0, 32);
       const sym = action.sym.toUpperCase();
       if (name.length < 3 || !/^[A-Z0-9]{3,4}$/.test(sym)) return state;
+      const ind = INDUSTRIES.some((i) => i.id === action.ind) ? (action.ind as string) : "paper";
       return {
         ...state,
         factory: {
           ...state.factory,
           name,
           sym,
+          ind,
           founded: true,
           news: [
             { id: state.seq, day: 0, text: `Founding day! ${name} (${sym}) opens its doors with $150, one rickety machine and boundless optimism.`, tone: "good" as const },
@@ -1261,6 +1296,12 @@ export function reducer(state: GameState, action: Action): GameState {
         },
         seq: state.seq + 1,
       };
+    }
+
+    case "MILESTONE": {
+      const got = state.milestones ?? [];
+      if (got.includes(action.amt)) return state;
+      return { ...state, milestones: [...got, action.amt] };
     }
 
     case "FACT_PRICE": {
@@ -1271,7 +1312,7 @@ export function reducer(state: GameState, action: Action): GameState {
 
     case "FACT_MACHINE": {
       const f = state.factory;
-      const cost = machineCost(f.machines);
+      const cost = machineCost(f);
       if (f.cash < cost) return state;
       return { ...state, factory: { ...f, cash: round2(f.cash - cost), costs: round2(f.costs + cost), machines: f.machines + 1 } };
     }

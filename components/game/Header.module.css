@@ -207,3 +207,17 @@
   align-self: center;
   white-space: nowrap;
 }
+
+.congrats {
+  position: absolute;
+  right: 18px;
+  top: -6px;
+  z-index: 8;
+  pointer-events: none;
+  animation: congratsOut 2.6s ease forwards;
+}
+
+@keyframes congratsOut {
+  0%, 70% { opacity: 1; transform: rotate(-11deg) scale(1); }
+  100% { opacity: 0; transform: rotate(-4deg) scale(1.15); }
+}

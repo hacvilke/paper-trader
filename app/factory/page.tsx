@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Desk from "@/components/paper-ui/Desk";
 import PaperSheet from "@/components/paper-ui/PaperSheet";
 import PaperChart from "@/components/paper-ui/PaperChart";
@@ -11,7 +11,7 @@ import { useToast } from "@/lib/toast";
 import { useChecks } from "@/lib/checks";
 import { useMarket } from "@/lib/market";
 import { useAuth } from "@/lib/auth";
-import { symFromName } from "@/lib/game";
+import { INDUSTRIES, industryOf, symFromName } from "@/lib/game";
 import {
   FACT_ADVERT_COST,
   FACT_BONUS_PER_WORKER,
@@ -30,11 +30,11 @@ import {
 } from "@/lib/game";
 import styles from "./page.module.css";
 
-const PRICE_CHIPS: Array<[string, number]> = [
-  ["bargain 2.00", 2.0],
-  ["fair 3.00", 3.0],
-  ["premium 4.50", 4.5],
-  ["greedy 6.50", 6.5],
+const priceChips = (fair: number): Array<[string, number]> => [
+  ["bargain", Math.round(fair * 0.66 * 100) / 100],
+  ["fair", fair],
+  ["premium", Math.round(fair * 1.5 * 100) / 100],
+  ["greedy", Math.round(fair * 2.2 * 100) / 100],
 ];
 
 function Gauge({
@@ -66,13 +66,37 @@ export default function FactoryPage() {
   const toast = useToast();
   const showCheck = useChecks();
   const { auth } = useAuth();
+  const [floatHeld, setFloatHeld] = useState(0);
+  useEffect(() => {
+    if (!state.factory?.listed) return;
+    let stop = false;
+    const load = () =>
+      window
+        .fetch(`/api/owners?sym=${state.factory.sym}`, { cache: "no-store" })
+        .then((r) => r.json())
+        .then((d) => {
+          if (!stop)
+            setFloatHeld(
+              (d.rows ?? [])
+                .filter((r: { user: string }) => r.user !== auth?.user)
+                .reduce((a: number, r: { qty: number }) => a + r.qty, 0)
+            );
+        })
+        .catch(() => {});
+    load();
+    const iv = window.setInterval(load, 10000);
+    return () => {
+      stop = true;
+      window.clearInterval(iv);
+    };
+  }, [state.factory?.listed, state.factory?.sym, auth?.user]);
   const wire = (text: string) => {
     if (!auth) return;
     void window
       .fetch("/api/feed", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user: auth.user, text }),
+        body: JSON.stringify({ user: auth.user, text, token: auth.token }),
       })
       .catch(() => {});
   };
@@ -80,11 +104,21 @@ export default function FactoryPage() {
   const [bizName, setBizName] = useState("");
   const [bizErr, setBizErr] = useState<string | null>(null);
   const [founding, setFounding] = useState(false);
+  const [indPick, setIndPick] = useState<string>("paper");
+  const [offers] = useState<string[]>(() => {
+    const ids = INDUSTRIES.map((i) => i.id);
+    for (let i = ids.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [ids[i], ids[j]] = [ids[j], ids[i]];
+    }
+    return ids.slice(0, 3);
+  });
 
   const f = state.factory;
   const proposedSym = bizName.trim().length >= 3 ? symFromName(bizName) : "";
   const amt = Math.max(0, Math.round(Number(amtRaw) || 0));
-  const mc = machineCost(f.machines);
+  const mc = machineCost(f);
+  const ind = industryOf(f);
   const staffing = Math.round(Math.min(1, f.workers / Math.max(1, f.machines * 2)) * 100);
   const madePerDay = Math.round(f.machines * 22 * (staffing / 100) * (0.6 + f.morale / 250) * (f.morale < 25 ? 0.5 : 1));
   const pf = Math.min(2.4, Math.max(0.12, Math.pow(FACT_FAIR_PRICE / f.price, 1.35)));
@@ -161,7 +195,7 @@ export default function FactoryPage() {
       setBizErr(`ticker ${proposedSym} is already listed — tweak the name.`);
       return;
     }
-    dispatch({ type: "FOUND_BIZ", name, sym: proposedSym });
+    dispatch({ type: "FOUND_BIZ", name, sym: proposedSym, ind: indPick });
     toast("\U0001F3ED " + name + " (" + proposedSym + ") founded. The moose stamps the papers.", "good");
   }
 
@@ -200,6 +234,25 @@ export default function FactoryPage() {
               ) : (
                 <span className={styles.dim}>type a name to see your ticker…</span>
               )}
+            </div>
+            <div className={styles.indLabel}>pick your trade — three offers, one desk:</div>
+            <div className={styles.indRow}>
+              {offers.map((id) => {
+                const it = INDUSTRIES.find((x) => x.id === id)!;
+                return (
+                  <button
+                    key={id}
+                    className={`${styles.indCard} ${indPick === id ? styles.indOn : ""}`}
+                    onClick={() => setIndPick(id)}
+                  >
+                    <b>{it.label}</b>
+                    <span className={styles.indBlurb}>{it.blurb}</span>
+                    <span className={styles.indNums}>
+                      ${it.fair.toFixed(2)}/{it.unit.slice(0, 4)} · wage ${it.wage.toFixed(2)} · {it.out}/day
+                    </span>
+                  </button>
+                );
+              })}
             </div>
             {bizErr && <div className={styles.warn}>✗ {bizErr}</div>}
             <div className={styles.btnsRow}>
@@ -247,10 +300,10 @@ export default function FactoryPage() {
                       inventory
                     </Hint>
                   </span>
-                  <b>{f.reams} reams</b>
+                  <b>{f.reams} {ind.unit}</b>
                 </div>
                 <div className={styles.stat}>
-                  <span>price / ream</span>
+                  <span>price / {ind.unit.replace(/s$/, "")}</span>
                   <b>
                     ${f.price.toFixed(2)}{" "}
                     <em className={`${styles.pw} ${styles["pw" + priceWord(f.price)]}`}>{priceWord(f.price)}</em>
@@ -279,7 +332,7 @@ export default function FactoryPage() {
 
               <div className={styles.flowRow}>
                 <span>
-                  make <b>~{madePerDay}</b>/day
+                  make <b>~{madePerDay}</b> {ind.unit}/day
                 </span>
                 <span>
                   demand <b>~{demandPerDay}</b>/day {f.ads > 0 && <em className={styles.adsOn}>· ads {f.ads}d</em>}
@@ -302,17 +355,17 @@ export default function FactoryPage() {
                 <Hint text="Around $3.00 is what a ream fairly goes for. Underprice and you sell out but earn peanuts. Overprice and reams gather dust — and your reputation slides.">
                   paper is a commodity
                 </Hint>{" "}
-                — the market notices greedy tags.
+                — the market notices greedy tags (fair here ≈ ${ind.fair.toFixed(2)}).
               </p>
               <div className={styles.chipRow}>
-                {PRICE_CHIPS.map(([label, p]) => (
+                {priceChips(ind.fair).map(([label, p]) => (
                   <PaperButton
                     key={label}
                     small
                     tone={f.price === p ? "blue" : "pencil"}
                     onClick={() => dispatch({ type: "FACT_PRICE", price: p })}
                   >
-                    {label}
+                    {label} {p.toFixed(2)}
                   </PaperButton>
                 ))}
               </div>
@@ -321,7 +374,7 @@ export default function FactoryPage() {
             <PaperSheet tape="corners" rotation={-0.6} className={styles.panel}>
               <h2 className={styles.h2}>the floor</h2>
               <div className={styles.ops}>
-                <PaperButton tone="green" title={`A new machine makes ~22 reams/day at full staff. Costs ${fmtMoney(mc)}`} onClick={() => {
+                <PaperButton tone="green" title={`A new machine makes ~${ind.out} ${ind.unit}/day at full staff. Costs ${fmtMoney(mc)}`} onClick={() => {
                   if (f.cash < mc) return toast(`A machine costs ${fmtMoney(mc)} — the till has ${fmtMoney(f.cash)}.`, "bad");
                   dispatch({ type: "FACT_MACHINE" });
                   toast(`Machine № ${f.machines + 1} installed. It hums.`, "good");
@@ -449,6 +502,12 @@ export default function FactoryPage() {
                   </div>
                 </div>
                 <PaperChart data={fold7.hist} overlay={smud?.hist} height={96} />
+                <div className={styles.ownership}>
+                  <Hint text="Who holds your company: your founder shares vs the public float other traders bought (live from the shared cabinet). Hold more than half of all shares and you control the company — simple as that, no boardroom required.">
+                    ownership
+                  </Hint>
+                  : you <b>60%</b> · investors hold <b>{floatHeld}</b> of 40 float sh
+                </div>
                 <div className={styles.verdict}>
                   {edge >= 0.5 ? (
                     <span className={styles.verdictGood}>🏆 your mill leads by {edge.toFixed(1)}% — the moose is speechless</span>

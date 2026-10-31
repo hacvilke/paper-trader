@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { db } from "@/lib/db";
+import { rateLimit, tooMany } from "@/lib/ratelimit";
 
 /** The wire — shared ticker of deeds. Supabase-backed, file fallback. */
 const DIR = path.join(process.cwd(), "data");
@@ -39,14 +40,30 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  if (!rateLimit(req, "feed", 6, 60_000)) return tooMany();
   try {
     const body = await req.json();
     const user = String(body.user ?? "");
     const text = String(body.text ?? "").trim().slice(0, 90);
+    const token = String(body.token ?? "");
     if (!/^[a-z0-9_]{3,14}$/.test(user) || text.length < 1) {
       return NextResponse.json({ ok: false }, { status: 400 });
     }
+    // only real badges can post — no impersonation, no guest spam
     const pool = db();
+    const ok = pool
+      ? (await pool.query("SELECT h FROM accounts WHERE uname = $1", [user])).rows[0]?.h === token
+      : await (async () => {
+          try {
+            const accs = JSON.parse(
+              await readFile(path.join(process.cwd(), "data", "accounts.json"), "utf8")
+            );
+            return accs[user]?.h === token;
+          } catch {
+            return false;
+          }
+        })();
+    if (!ok) return NextResponse.json({ ok: false }, { status: 401 });
     if (pool) {
       await pool.query("INSERT INTO feed (uname, txt, ts) VALUES ($1,$2,$3)", [
         user,
