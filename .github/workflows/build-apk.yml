@@ -44,6 +44,9 @@ jobs:
   # keep the GitHub Pages mirror in sync with main (static backup host)
   deploy-pages:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     permissions:
       pages: write
       id-token: write
@@ -72,4 +75,5 @@ jobs:
           path: .next-export
 
       - name: Deploy to Pages
+        id: deployment
         uses: actions/deploy-pages@v4
