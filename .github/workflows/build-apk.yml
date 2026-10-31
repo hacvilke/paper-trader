@@ -40,3 +40,36 @@ jobs:
           path: |
             android/app/build/outputs/apk/debug/app-debug.apk
             android/app/build/outputs/apk/release/app-release.apk
+
+  # keep the GitHub Pages mirror in sync with main (static backup host)
+  deploy-pages:
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build static export
+        run: |
+          npm ci --no-audit --no-fund
+          mv app/api /tmp/api-backup
+          STATIC_EXPORT=1 npx next build
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .next-export
+
+      - name: Deploy to Pages
+        uses: actions/deploy-pages@v4
