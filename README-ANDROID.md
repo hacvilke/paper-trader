@@ -42,9 +42,32 @@ create a web service on render.com from this repo — it auto-reads
 > Tip: the site is also a PWA — "Add to Home Screen" from Chrome installs
 > instantly without any APK. The APK is the "real app" version.
 
+## Server setup (Render + Supabase) — persistent shared storage
+
+In Render → your web service → **Environment** → add exactly:
+
+```
+DATABASE_URL = <your Supabase Postgres connection string>
+```
+
+Get the string from Supabase → your project → **Connect** → **Session
+pooler** (port 5432). It looks like:
+
+```
+postgresql://postgres.uakgqomiajatqhgtkgby:<YOUR-PASSWORD>@aws-0-<region>.pooler.supabase.com:5432/postgres
+```
+
+Paste it with your password embedded (the app never needs the password
+anywhere else). Save → Render redeploys → tables auto-create. Done:
+badges, saves, leaderboard, the wire and the business-ticker registry
+now survive deploys, restarts and cold starts.
+
+(Deploying without DATABASE_URL still works — it falls back to the
+on-disk cabinet, which resets on deploys.)
+
 ## Current build
 
-- **v1.1.0 (versionCode 2)** → default server: **https://paper-trader-h1ko.onrender.com**
+- **v1.2.0 (versionCode 3)** — eco-fx perf mode, founding papers for unique companies, X-only-on-close → default server: **https://paper-trader-h1ko.onrender.com**
   (full multiplayer: shared saves, press badges, live leaderboard, the wire).
   GitHub Pages remains available via the in-app ⋮ menu → server address.
 
