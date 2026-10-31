@@ -19,6 +19,7 @@ export default function PressBadge({ onClose }: { onClose: () => void }) {
   const [pin, setPin] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [slow, setSlow] = useState(false);
   const [fx, setFx] = useState<FxPref>("auto");
 
   useEffect(() => {
@@ -27,8 +28,12 @@ export default function PressBadge({ onClose }: { onClose: () => void }) {
 
   async function go(mode: "login" | "register") {
     setBusy(true);
+    setSlow(false);
+    const t = window.setTimeout(() => setSlow(true), 2500);
     const e = await (mode === "login" ? login(user, pin) : register(user, pin));
+    window.clearTimeout(t);
     setBusy(false);
+    setSlow(false);
     setErr(e);
   }
 
@@ -36,6 +41,11 @@ export default function PressBadge({ onClose }: { onClose: () => void }) {
     <div className={styles.veil} role="dialog" aria-modal aria-label="trader badge">
       <div className={styles.badgeWrap}>
         <PaperSheet tape="clip" rotation={-1} className={styles.badge}>
+          <div className={styles.xWrap}>
+            <PaperButton small tone="red" fx="x" title="close" ariaLabel="close" onClick={onClose}>
+              ✕
+            </PaperButton>
+          </div>
           <div className={styles.strip} aria-hidden />
           <h2 className={styles.h}>press badge</h2>
           <p className={styles.note}>
@@ -85,6 +95,9 @@ export default function PressBadge({ onClose }: { onClose: () => void }) {
                 />
               </label>
               {err && <div className={styles.err}>✗ {err}</div>}
+              {busy && slow && (
+                <div className={styles.hint}>waking Moorthy&apos;s server — the first knock after a nap can take ~40s…</div>
+              )}
               <div className={styles.row}>
                 <PaperButton tone="green" disabled={busy} onClick={() => go("register")}>
                   new badge

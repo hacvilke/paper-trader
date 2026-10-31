@@ -33,9 +33,13 @@ async function resolveBadge(req: Request): Promise<string | null> {
   const token = u.searchParams.get("t") ?? "";
   const pool = db();
   if (pool) {
-    const r = await pool.query("SELECT h FROM accounts WHERE uname = $1", [as]);
-    if (r.rows[0]?.h === token) return as;
-    return null;
+    try {
+      const r = await pool.query("SELECT h FROM accounts WHERE uname = $1", [as]);
+      if (r.rows[0]?.h === token) return as;
+      return null;
+    } catch (e) {
+      console.error("resolveBadge db → file fallback:", e);
+    }
   }
   try {
     const acc = JSON.parse(await readFile(ACCOUNTS, "utf8"))[as];
@@ -72,8 +76,7 @@ export async function GET(req: Request) {
       if (r.rows[0]) return NextResponse.json(r.rows[0].state);
       return NextResponse.json({ ok: false });
     } catch (e) {
-      console.error("save GET db:", e);
-      return NextResponse.json({ ok: false }, { status: 500 });
+      console.error("save GET db → file fallback:", e);
     }
   }
   const file = await fileTarget(req);
@@ -108,8 +111,7 @@ async function put(req: Request) {
       );
       return NextResponse.json({ ok: true });
     } catch (e) {
-      console.error("save PUT db:", e);
-      return NextResponse.json({ ok: false }, { status: 500 });
+      console.error("save PUT db → file fallback:", e);
     }
   }
   const file = await fileTarget(req);

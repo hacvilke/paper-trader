@@ -27,6 +27,7 @@ export default function PaperButton({
   type = "button",
   className = "",
   fx = "press",
+  ariaLabel,
 }: {
   children: ReactNode;
   onClick?: () => void;
@@ -37,6 +38,7 @@ export default function PaperButton({
   type?: "button" | "submit";
   className?: string;
   fx?: "x" | "press";
+  ariaLabel?: string;
 }) {
   const [strikes, setStrikes] = useState<Strike[]>([]);
   const [marks, setMarks] = useState<Mark[]>([]);
@@ -66,7 +68,7 @@ export default function PaperButton({
     .join(" ");
 
   return (
-    <button type={type} title={title} disabled={disabled} onClick={handle} className={cls}>
+    <button type={type} title={title} aria-label={ariaLabel} disabled={disabled} onClick={handle} className={cls}>
       <span className={styles.label}>{children}</span>
       {fx === "x" &&
         strikes.map((s) => (

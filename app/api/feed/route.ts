@@ -51,26 +51,36 @@ export async function POST(req: Request) {
     }
     // only real badges can post — no impersonation, no guest spam
     const pool = db();
-    const ok = pool
-      ? (await pool.query("SELECT h FROM accounts WHERE uname = $1", [user])).rows[0]?.h === token
-      : await (async () => {
-          try {
-            const accs = JSON.parse(
-              await readFile(path.join(process.cwd(), "data", "accounts.json"), "utf8")
-            );
-            return accs[user]?.h === token;
-          } catch {
-            return false;
-          }
-        })();
+    const ok = await (async () => {
+      if (pool) {
+        try {
+          const r = await pool.query("SELECT h FROM accounts WHERE uname = $1", [user]);
+          return r.rows[0]?.h === token;
+        } catch (e) {
+          console.error("feed auth db → file fallback:", e);
+        }
+      }
+      try {
+        const accs = JSON.parse(
+          await readFile(path.join(process.cwd(), "data", "accounts.json"), "utf8")
+        );
+        return accs[user]?.h === token;
+      } catch {
+        return false;
+      }
+    })();
     if (!ok) return NextResponse.json({ ok: false }, { status: 401 });
     if (pool) {
-      await pool.query("INSERT INTO feed (uname, txt, ts) VALUES ($1,$2,$3)", [
-        user,
-        text,
-        Date.now(),
-      ]);
-      return NextResponse.json({ ok: true });
+      try {
+        await pool.query("INSERT INTO feed (uname, txt, ts) VALUES ($1,$2,$3)", [
+          user,
+          text,
+          Date.now(),
+        ]);
+        return NextResponse.json({ ok: true });
+      } catch (e) {
+        console.error("feed POST db → file fallback:", e);
+      }
     }
     const rows = await fileRead();
     rows.push({ user, text, ts: Date.now() });

@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setOpen(false);
       return null;
     } catch {
-      return "the wire to Moorthy's is down.";
+      return "the wire is down — no connection (or the server is waking; give it ~40s and knock again).";
     }
   }, []);
 

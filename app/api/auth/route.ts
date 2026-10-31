@@ -45,9 +45,9 @@ export async function POST(req: Request) {
 
   if (body.mode === "register") {
     if (pool) {
-      const salt = randomBytes(8).toString("hex");
-      const h = hashOf(user, salt, pin);
       try {
+        const salt = randomBytes(8).toString("hex");
+        const h = hashOf(user, salt, pin);
         await pool.query("INSERT INTO accounts (uname, salt, h, created) VALUES ($1,$2,$3,$4)", [
           user,
           salt,
@@ -56,11 +56,10 @@ export async function POST(req: Request) {
         ]);
         return NextResponse.json({ ok: true, user, token: h });
       } catch (e) {
-        const code = (e as { code?: string }).code;
-        if (code === "23505")
+        if ((e as { code?: string }).code === "23505")
           return NextResponse.json({ ok: false, error: "that badge name is taken" }, { status: 409 });
-        console.error("register db:", e);
-        return NextResponse.json({ ok: false, error: "the cabinet is stuck" }, { status: 500 });
+        // DB unreachable → keep the game playable on the on-disk cabinet
+        console.error("register db → file cabinet fallback:", e);
       }
     }
     const accounts = await fileAccounts();
@@ -76,11 +75,15 @@ export async function POST(req: Request) {
 
   if (body.mode === "login") {
     if (pool) {
-      const r = await pool.query("SELECT salt, h FROM accounts WHERE uname = $1", [user]);
-      const acc = r.rows[0];
-      if (!acc || acc.h !== hashOf(user, acc.salt, pin))
-        return NextResponse.json({ ok: false, error: "no badge matches that name + PIN" }, { status: 401 });
-      return NextResponse.json({ ok: true, user, token: acc.h });
+      try {
+        const r = await pool.query("SELECT salt, h FROM accounts WHERE uname = $1", [user]);
+        const acc = r.rows[0];
+        if (!acc || acc.h !== hashOf(user, acc.salt, pin))
+          return NextResponse.json({ ok: false, error: "no badge matches that name + PIN" }, { status: 401 });
+        return NextResponse.json({ ok: true, user, token: acc.h });
+      } catch (e) {
+        console.error("login db → file cabinet fallback:", e);
+      }
     }
     const acc = (await fileAccounts())[user];
     if (!acc || acc.h !== hashOf(user, acc.salt, pin))

@@ -27,8 +27,12 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "bad sym" }, { status: 400 });
   const pool = db();
   if (pool) {
-    const r = await pool.query("SELECT sym FROM biz WHERE sym = $1", [sym]);
-    return NextResponse.json({ ok: true, taken: r.rows.length > 0 });
+    try {
+      const r = await pool.query("SELECT sym FROM biz WHERE sym = $1", [sym]);
+      return NextResponse.json({ ok: true, taken: r.rows.length > 0 });
+    } catch (e) {
+      console.error("biz GET db → file fallback:", e);
+    }
   }
   return NextResponse.json({ ok: true, taken: sym in (await fileBiz()) });
 }
@@ -56,7 +60,7 @@ export async function POST(req: Request) {
       } catch (e) {
         if ((e as { code?: string }).code === "23505")
           return NextResponse.json({ ok: false, error: `ticker ${sym} is already listed` }, { status: 409 });
-        throw e;
+        console.error("biz POST db → file fallback:", e);
       }
     }
     const biz = await fileBiz();
