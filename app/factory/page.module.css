@@ -380,3 +380,48 @@
 .verdictBad {
   color: var(--ink-red);
 }
+
+.foundLbl {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pencil);
+  margin-bottom: 10px;
+}
+
+.foundIn {
+  font-family: var(--font-hand);
+  font-size: 30px;
+  font-weight: 700;
+  background: transparent;
+  border: none;
+  border-bottom: 2.5px solid rgba(59, 37, 15, 0.35);
+  color: var(--ink);
+  padding: 0 4px 3px;
+}
+
+.foundIn:focus {
+  outline: none;
+  border-bottom-color: var(--ink-green);
+}
+
+.symPreview {
+  font-family: var(--font-hand);
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+.symPreview b {
+  color: var(--ink-blue);
+  font-size: 24px;
+  text-decoration: underline wavy rgba(36, 86, 166, 0.5);
+  text-underline-offset: 4px;
+}
+
+.dim {
+  color: var(--pencil);
+  font-size: 16px;
+}

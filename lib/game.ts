@@ -46,6 +46,9 @@ export const PROC_MAX = 12; // max procedural listings at once
 export type FactNews = { id: number; day: number; text: string; tone: "good" | "bad" | "info" };
 
 export type Factory = {
+  name: string; // the company YOU founded — unique per trader
+  sym: string; // its ticker, reserved globally at founding
+  founded: boolean;
   cash: number;
   reams: number;
   price: number;
@@ -67,6 +70,18 @@ export type Factory = {
   ipoPrice: number; // FOLD7 & SMUD both started here
 };
 
+/** derive a 3-4 letter ticker from a company name */
+export function symFromName(name: string): string {
+  const letters = name.toUpperCase().replace(/[^A-Z]/g, "");
+  let sym = "";
+  for (const ch of letters) {
+    if (sym.length >= 4) break;
+    if (!sym.includes(ch)) sym += ch;
+  }
+  while (sym.length < 3) sym += String.fromCharCode(65 + Math.floor(Math.random() * 26));
+  return sym.slice(0, 4);
+}
+
 export function machineCost(machines: number) {
   return Math.round(120 * Math.pow(1.4, machines - 1));
 }
@@ -81,7 +96,7 @@ export function priceWord(price: number) {
 export const TICKS_PER_DAY = 26;
 export const START_MIN = 9 * 60 + 30;
 export const MIN_PER_TICK = 15;
-export const GAME_VERSION = 10;
+export const GAME_VERSION = 11;
 
 export type ShortPos = { qty: number; avg: number }; // avg = entry (sold-at) price
 export const HALT_MOVE = 0.08;
@@ -191,6 +206,7 @@ export type Action =
   | { type: "FACT_PAY_ME"; amt: number }
   | { type: "FACT_INJECT"; amt: number }
   | { type: "FACT_IPO" }
+  | { type: "FOUND_BIZ"; name: string; sym: string }
   | { type: "HYDRATE"; state: GameState };
 
 const DEFS: Array<
@@ -356,6 +372,9 @@ export function initialGame(): GameState {
     bonusesTotal: 0,
     pendingCheck: null,
     factory: {
+      name: "",
+      sym: "",
+      founded: false,
       cash: 150,
       reams: 40,
       price: 3.0,
@@ -374,14 +393,7 @@ export function initialGame(): GameState {
       founder: 0,
       publicShares: 0,
       ipoPrice: 0,
-      news: [
-        {
-          id: 1,
-          day: 0,
-          text: "Moorthy's repossessed Foldville Mills № 7 and handed YOU the keys. Make paper. Make money. Pay yourself.",
-          tone: "info",
-        },
-      ],
+      news: [],
     },
     seq: 1,
     tut: true,
@@ -688,7 +700,7 @@ export function reducer(state: GameState, action: Action): GameState {
 
         // your listed mill trades toward its fundamentals, not just vibes
         let anchor = 0;
-        if (s.sym === "FOLD7" && state.factory?.listed && fairPx > 0) {
+        if (s.sym === state.factory?.sym && state.factory?.listed && fairPx > 0) {
           anchor = ((fairPx - s.price) / s.price) * 0.05;
         }
         const ret =
@@ -1231,6 +1243,26 @@ export function reducer(state: GameState, action: Action): GameState {
       };
     }
 
+    case "FOUND_BIZ": {
+      if (state.factory.founded) return state;
+      const name = action.name.trim().slice(0, 32);
+      const sym = action.sym.toUpperCase();
+      if (name.length < 3 || !/^[A-Z0-9]{3,4}$/.test(sym)) return state;
+      return {
+        ...state,
+        factory: {
+          ...state.factory,
+          name,
+          sym,
+          founded: true,
+          news: [
+            { id: state.seq, day: 0, text: `Founding day! ${name} (${sym}) opens its doors with $150, one rickety machine and boundless optimism.`, tone: "good" as const },
+          ],
+        },
+        seq: state.seq + 1,
+      };
+    }
+
     case "FACT_PRICE": {
       const price = Math.min(9.99, Math.max(0.5, round2(action.price)));
       if (!(price > 0)) return state;
@@ -1318,9 +1350,9 @@ export function reducer(state: GameState, action: Action): GameState {
         round2(px * (1 + 0.01 * Math.sin(i / 3)))
       );
       const stock: Stock = {
-        sym: "FOLD7",
-        name: "Foldville Mills № 7",
-        blurb: "Your mill. Publicly traded.",
+        sym: f.sym,
+        name: f.name || "The Player Mill",
+        blurb: "Founded, bled on, and taken public by you.",
         price: px,
         prev: px,
         dayOpen: px,
@@ -1342,8 +1374,8 @@ export function reducer(state: GameState, action: Action): GameState {
         id: state.seq,
         day: dayOf(state.tick),
         time: timeOf(state.tick),
-        text: `FOLD7 lists at $${px.toFixed(2)} — Foldville Mills № 7 goes public. Moorthy's keeps ${Math.round(UNDERWRITER_CUT * 100)}% for the confetti.`,
-        sym: "FOLD7",
+        text: `${f.sym} lists at $${px.toFixed(2)} — ${f.name} goes public. Moorthy's keeps ${Math.round(UNDERWRITER_CUT * 100)}% for the confetti.`,
+        sym: f.sym,
         tone: "good",
       };
       // the house mill lists the same morning, at the same price. race on.
@@ -1375,7 +1407,7 @@ export function reducer(state: GameState, action: Action): GameState {
       return {
         ...state,
         stocks: [...state.stocks, stock, smud],
-        holdings: { ...state.holdings, FOLD7: { qty: FOUNDER_SHARES, avg: px } },
+        holdings: { ...state.holdings, [f.sym]: { qty: FOUNDER_SHARES, avg: px } },
         factory: {
           ...f,
           listed: true,
@@ -1384,7 +1416,7 @@ export function reducer(state: GameState, action: Action): GameState {
           ipoPrice: px,
           cash: round2(f.cash + proceeds),
           news: [
-            { id: state.seq + 1, day: f.day, text: `IPO day! ${PUBLIC_SHARES} public shares sold at $${px.toFixed(2)} — the till grows by ${fmtMoneySign(proceeds)}.`, tone: "good" as const },
+            { id: state.seq + 1, day: f.day, text: `IPO day! ${PUBLIC_SHARES} public shares of ${f.name} sold at $${px.toFixed(2)} — the till grows by ${fmtMoneySign(proceeds)}.`, tone: "good" as const },
             ...f.news,
           ].slice(0, 6),
         },

@@ -158,7 +158,7 @@ export default function CheckOverlay({ check, onClose }: { check: CheckData; onC
               clear
             </PaperButton>
             {check.kind === "pay" && (
-              <PaperButton small tone="red" onClick={tearIt}>
+              <PaperButton small tone="red" fx="x" onClick={tearIt}>
                 tear it up
               </PaperButton>
             )}

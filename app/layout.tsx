@@ -7,6 +7,7 @@ import "@fontsource/special-elite/400.css";
 import { RoughDefs } from "@/components/paper-ui/doodles";
 import { ToastProvider } from "@/lib/toast";
 import { AuthProvider } from "@/lib/auth";
+import PerfGate from "@/lib/perf";
 import { CheckProvider } from "@/lib/checks";
 import { MarketProvider } from "@/lib/market";
 import Nav from "@/components/paper-ui/Nav";
@@ -40,6 +41,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <PerfGate />
         <RoughDefs />
         <ToastProvider>
           <AuthProvider>

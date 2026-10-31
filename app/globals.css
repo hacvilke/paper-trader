@@ -30,10 +30,25 @@ body {
   padding: 0;
 }
 
+html {
+  background: #5f3c1c;
+}
+
 body {
   font-family: var(--font-body);
   color: var(--ink);
   overflow-x: clip;
+  min-height: 100dvh;
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* the whole desk lives on one fixed layer — scrolling repaints nothing */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
   background-color: #7c4f28;
   background-image:
     var(--noise),
@@ -44,9 +59,7 @@ body {
     repeating-linear-gradient(91.5deg, rgba(255, 236, 200, 0.05) 0 1.5px, transparent 1.5px 14px),
     repeating-linear-gradient(0deg, rgba(43, 24, 8, 0.05) 0 2px, transparent 2px 13px),
     linear-gradient(180deg, #9c6e40, #7c4f28 55%, #5f3c1c);
-  background-attachment: fixed;
   background-blend-mode: overlay, multiply, normal, normal, normal, normal, normal, normal;
-  min-height: 100dvh;
 }
 
 /* soft desk lighting / vignette above the papers */
@@ -105,4 +118,30 @@ input:not([type="checkbox"]):not([type="radio"]),
 textarea,
 canvas {
   cursor: var(--cur-pencil);
+}
+
+/* ---------- eco mode (html.lowfx): cheap phones, no jank ---------- */
+/* hand-drawn SVG displacement filters are the #1 cost on low-end GPUs */
+.lowfx [filter] {
+  filter: none !important;
+}
+
+/* stop every infinite loop animation (marquee, pulses, nudges) */
+.lowfx *,
+.lowfx *::before,
+.lowfx *::after {
+  animation-iteration-count: 1 !important;
+}
+
+.lowfx * {
+  text-rendering: optimizeSpeed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

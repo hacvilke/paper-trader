@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PaperSheet from "./PaperSheet";
 import PaperButton from "./PaperButton";
 import { useAuth } from "@/lib/auth";
+import { getFxPref, setFxPref } from "@/lib/perf";
+import type { FxPref } from "@/lib/perf";
 import styles from "./PressBadge.module.css";
 
 /**
@@ -17,6 +19,11 @@ export default function PressBadge({ onClose }: { onClose: () => void }) {
   const [pin, setPin] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [fx, setFx] = useState<FxPref>("auto");
+
+  useEffect(() => {
+    setFx(getFxPref());
+  }, []);
 
   async function go(mode: "login" | "register") {
     setBusy(true);
@@ -43,7 +50,7 @@ export default function PressBadge({ onClose }: { onClose: () => void }) {
                 <b className={styles.holderName}>{auth.user}</b>
               </div>
               <div className={styles.row}>
-                <PaperButton tone="red" onClick={logout}>
+                <PaperButton tone="red" fx="x" onClick={logout}>
                   take badge off
                 </PaperButton>
                 <PaperButton tone="green" onClick={onClose}>
@@ -88,6 +95,29 @@ export default function PressBadge({ onClose }: { onClose: () => void }) {
               </div>
               <div className={styles.hint}>
                 “new badge” = register · “sign in” = continue an existing trader&apos;s paper
+              </div>
+              <div className={styles.fxRow}>
+                <span className={styles.fxLbl}>paper fx</span>
+                {(["full", "auto", "eco"] as FxPref[]).map((p) => (
+                  <PaperButton
+                    key={p}
+                    small
+                    tone={fx === p ? "blue" : "pencil"}
+                    onClick={() => {
+                      setFxPref(p);
+                      setFx(p);
+                    }}
+                    title={
+                      p === "eco"
+                        ? "eco: no fancy filters, no looping animations — smoothest on cheap phones"
+                        : p === "full"
+                          ? "full: all the hand-drawn theatre"
+                          : "auto: decide by device"
+                    }
+                  >
+                    {p}
+                  </PaperButton>
+                ))}
               </div>
             </>
           )}

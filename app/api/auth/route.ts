@@ -2,18 +2,18 @@ import { NextResponse } from "next/server";
 import { readFile, writeFile, mkdir } from "fs/promises";
 import { createHash, randomBytes } from "crypto";
 import path from "path";
+import { db } from "@/lib/db";
 
 /**
- * Press-badge auth: a trader name + a 4-6 digit PIN.
- * Each badge gets its own save file in data/saves/<user>.json and a
- * row on the leaderboard. Lighter than passwords — it's a paper game.
+ * Press-badge auth: trader name + 4-6 digit PIN, hashed (sha256+salt).
+ * Backed by Supabase (DATABASE_URL) or a local JSON fallback.
  */
 const DIR = path.join(process.cwd(), "data");
 const ACCOUNTS = path.join(DIR, "accounts.json");
 
 type Accounts = Record<string, { salt: string; h: string; created: number }>;
 
-async function loadAccounts(): Promise<Accounts> {
+async function fileAccounts(): Promise<Accounts> {
   try {
     return JSON.parse(await readFile(ACCOUNTS, "utf8"));
   } catch {
@@ -38,21 +38,49 @@ export async function POST(req: Request) {
   if (!/^\d{4,6}$/.test(pin))
     return NextResponse.json({ ok: false, error: "PIN: 4-6 digits" }, { status: 400 });
 
-  const accounts = await loadAccounts();
-  await mkdir(DIR, { recursive: true });
+  const pool = db();
+  const now = Date.now();
 
   if (body.mode === "register") {
+    if (pool) {
+      const salt = randomBytes(8).toString("hex");
+      const h = hashOf(user, salt, pin);
+      try {
+        await pool.query("INSERT INTO accounts (uname, salt, h, created) VALUES ($1,$2,$3,$4)", [
+          user,
+          salt,
+          h,
+          now,
+        ]);
+        return NextResponse.json({ ok: true, user, token: h });
+      } catch (e) {
+        const code = (e as { code?: string }).code;
+        if (code === "23505")
+          return NextResponse.json({ ok: false, error: "that badge name is taken" }, { status: 409 });
+        console.error("register db:", e);
+        return NextResponse.json({ ok: false, error: "the cabinet is stuck" }, { status: 500 });
+      }
+    }
+    const accounts = await fileAccounts();
+    await mkdir(DIR, { recursive: true });
     if (accounts[user])
       return NextResponse.json({ ok: false, error: "that badge name is taken" }, { status: 409 });
     const salt = randomBytes(8).toString("hex");
     const h = hashOf(user, salt, pin);
-    accounts[user] = { salt, h, created: Date.now() };
+    accounts[user] = { salt, h, created: now };
     await writeFile(ACCOUNTS, JSON.stringify(accounts, null, 2));
     return NextResponse.json({ ok: true, user, token: h });
   }
 
   if (body.mode === "login") {
-    const acc = accounts[user];
+    if (pool) {
+      const r = await pool.query("SELECT salt, h FROM accounts WHERE uname = $1", [user]);
+      const acc = r.rows[0];
+      if (!acc || acc.h !== hashOf(user, acc.salt, pin))
+        return NextResponse.json({ ok: false, error: "no badge matches that name + PIN" }, { status: 401 });
+      return NextResponse.json({ ok: true, user, token: acc.h });
+    }
+    const acc = (await fileAccounts())[user];
     if (!acc || acc.h !== hashOf(user, acc.salt, pin))
       return NextResponse.json({ ok: false, error: "no badge matches that name + PIN" }, { status: 401 });
     return NextResponse.json({ ok: true, user, token: acc.h });

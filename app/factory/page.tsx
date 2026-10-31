@@ -11,6 +11,7 @@ import { useToast } from "@/lib/toast";
 import { useChecks } from "@/lib/checks";
 import { useMarket } from "@/lib/market";
 import { useAuth } from "@/lib/auth";
+import { symFromName } from "@/lib/game";
 import {
   FACT_ADVERT_COST,
   FACT_BONUS_PER_WORKER,
@@ -76,8 +77,12 @@ export default function FactoryPage() {
       .catch(() => {});
   };
   const [amtRaw, setAmtRaw] = useState("50");
+  const [bizName, setBizName] = useState("");
+  const [bizErr, setBizErr] = useState<string | null>(null);
+  const [founding, setFounding] = useState(false);
 
   const f = state.factory;
+  const proposedSym = bizName.trim().length >= 3 ? symFromName(bizName) : "";
   const amt = Math.max(0, Math.round(Number(amtRaw) || 0));
   const mc = machineCost(f.machines);
   const staffing = Math.round(Math.min(1, f.workers / Math.max(1, f.machines * 2)) * 100);
@@ -86,7 +91,7 @@ export default function FactoryPage() {
   const demandPerDay = Math.round((14 + f.rep * 0.45 + f.ads * 15) * pf);
   const duesPerDay = f.workers * 2 + f.machines * 3;
   const lifeNet = Math.round((f.revenue - f.costs) * 100) / 100;
-  const fold7 = state.stocks.find((x) => x.sym === "FOLD7");
+  const fold7 = state.stocks.find((x) => x.sym === f.sym);
   const smud = state.stocks.find((x) => x.sym === "SMUD");
   const ipoPx = f.ipoPrice || (fold7?.price ?? 1);
   const youPct = fold7 ? (fold7.price / ipoPx - 1) * 100 : 0;
@@ -102,7 +107,7 @@ export default function FactoryPage() {
       amount: amt,
       day: f.day,
       payee: "You — the desk",
-      memo: "owner's draw — Foldville Mills № 7",
+      memo: `owner's draw — ${f.name}`,
       onSign: () => {
         dispatch({ type: "FACT_PAY_ME", amt });
         toast(`${fmtMoney(amt)} moved from the till to your desk.`, "good");
@@ -117,7 +122,7 @@ export default function FactoryPage() {
       kind: "pay",
       amount: amt,
       day: f.day,
-      payee: "Foldville Mills № 7",
+      payee: f.name,
       memo: "capital injection — owner",
       onSign: () => {
         dispatch({ type: "FACT_INJECT", amt });
@@ -126,14 +131,106 @@ export default function FactoryPage() {
     });
   }
 
+  async function foundCompany() {
+    const name = bizName.trim();
+    if (name.length < 3) return setBizErr("give it a real name (3+ letters).");
+    if (!proposedSym) return setBizErr("ticker could not be derived.");
+    setFounding(true);
+    setBizErr(null);
+    let taken = false;
+    try {
+      const chk = await window.fetch(`/api/biz?sym=${proposedSym}`).then((r) => r.json());
+      taken = !!chk.taken;
+    } catch {
+      /* offline: register best-effort below */
+    }
+    if (!taken && auth) {
+      try {
+        const r = await window.fetch("/api/biz", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sym: proposedSym, user: auth.user, name }),
+        });
+        if (!r.ok) taken = true;
+      } catch {
+        /* offline — local world still gets the name */
+      }
+    }
+    setFounding(false);
+    if (taken) {
+      setBizErr(`ticker ${proposedSym} is already listed — tweak the name.`);
+      return;
+    }
+    dispatch({ type: "FOUND_BIZ", name, sym: proposedSym });
+    toast("\U0001F3ED " + name + " (" + proposedSym + ") founded. The moose stamps the papers.", "good");
+  }
+
+  const suggested = ["Smudge & Sons", "Quillhammer Pulp", "Fiberville Works", "Paper Palace Ltd", "Crisp Ream Co"];
+
+  if (!f.founded) {
+    return (
+      <Desk>
+        <div className={styles.wrap}>
+          <h1 className={styles.h1}>the factory</h1>
+          <p className={styles.sub}>
+            Moorthy&apos;s has an empty mill hall with your name on the lease — literally: write
+            your company into existence. every trader founds their own; tickers are reserved
+            globally, so no two barons share a listing.
+          </p>
+          <PaperSheet tape="top" rotation={-0.4} className={styles.panel} lines="ruled">
+            <h2 className={styles.h2}>certificate of incorporation ✎</h2>
+            <label className={styles.foundLbl}>
+              company name
+              <input
+                className={styles.foundIn}
+                value={bizName}
+                onChange={(e) => {
+                  setBizName(e.target.value.slice(0, 32));
+                  setBizErr(null);
+                }}
+                placeholder="Quillhammer Pulp"
+                maxLength={32}
+              />
+            </label>
+            <div className={styles.symPreview}>
+              {proposedSym ? (
+                <>
+                  ticker on the board: <b>{proposedSym}</b>
+                </>
+              ) : (
+                <span className={styles.dim}>type a name to see your ticker…</span>
+              )}
+            </div>
+            {bizErr && <div className={styles.warn}>✗ {bizErr}</div>}
+            <div className={styles.btnsRow}>
+              <PaperButton tone="green" disabled={founding} onClick={foundCompany}>
+                found the company
+              </PaperButton>
+              <PaperButton
+                small
+                tone="pencil"
+                onClick={() => setBizName(suggested[Math.floor(Math.random() * suggested.length)])}
+              >
+                suggest a name
+              </PaperButton>
+            </div>
+            <div className={styles.lifetime}>
+              founding kit: $150 cash · 40 reams · 1 machine · 2 workers · Moorthy&apos;s keeps the
+              deed until you IPO.
+            </div>
+          </PaperSheet>
+        </div>
+      </Desk>
+    );
+  }
+
   return (
     <Desk>
       <div className={styles.wrap}>
         <h1 className={styles.h1}>the factory</h1>
         <p className={styles.sub}>
-          <b>Foldville Mills № 7</b> — repossessed by Moorthy&apos;s and handed to you. make paper,
-          make money, pay yourself. one business day closes at every closing bell on the trading
-          floor.
+          <b>{f.name}</b> ({f.sym}) — founded by you, deeded by Moorthy&apos;s. make paper, make
+          money, pay yourself. one business day closes at every closing bell on the trading floor.
         </p>
 
         <div className={styles.cols}>
@@ -331,7 +428,7 @@ export default function FactoryPage() {
             {f.listed && fold7 ? (
               <PaperSheet tape="top" rotation={0.6} lines="grid" className={styles.panel}>
                 <h2 className={styles.h2}>
-                  the founder race <em className={styles.listed}>· your mill vs the house mill</em>
+                  the founder race <em className={styles.listed}>· {f.sym} vs the house mill</em>
                 </h2>
                 <div className={styles.statRow}>
                   <div className={styles.stat}>
@@ -362,7 +459,7 @@ export default function FactoryPage() {
                   )}
                 </div>
                 <p className={styles.noteText}>
-                  you hold <b>{f.founder} founder sh</b> of FOLD7. trade either mill on the floor —
+                  you hold <b>{f.founder} founder sh</b> of {f.sym}. trade either mill on the floor —
                   and remember: fair value follows the books. profit is the engine of this race.
                 </p>
               </PaperSheet>
@@ -404,8 +501,8 @@ export default function FactoryPage() {
                     title={ipoReady(f) ? "list Foldville Mills on the exchange" : "keep building — the bell rings when the books are ready"}
                     onClick={() => {
                       dispatch({ type: "FACT_IPO" });
-                      wire("rang the bell — FOLD7 went public 🔔");
-                      toast("🔔 FOLD7 lists on the board — founder shares are in your portfolio!", "good");
+                      wire(`rang the bell — ${f.sym} went public 🔔`);
+                      toast(`🔔 ${f.sym} lists on the board — founder shares are in your portfolio!`, "good");
                     }}
                   >
                     go public — ring the bell

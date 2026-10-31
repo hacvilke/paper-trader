@@ -110,7 +110,7 @@ export default function Header({
           >
             {muted ? "sound ✗" : "sound ♫"}
           </PaperButton>
-          <PaperButton small tone="red" title="start over" onClick={doReset}>
+          <PaperButton small tone="red" fx="x" title="start over" onClick={doReset}>
             {confirmReset ? "sure??" : "reset"}
           </PaperButton>
           {saveStatus && saveStatus !== "idle" && saveStatus !== "loading" && (

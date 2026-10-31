@@ -138,3 +138,18 @@
     opacity: 1;
   }
 }
+
+.fxRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.fxLbl {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pencil);
+  margin-right: 2px;
+}

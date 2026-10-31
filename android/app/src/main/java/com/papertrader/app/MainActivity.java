@@ -45,6 +45,7 @@ public class MainActivity extends Activity {
         ws.setLoadWithOverviewMode(true);
         ws.setUseWideViewPort(true);
         ws.setTextZoom(100);
+        web.setOverScrollMode(View.OVER_SCROLL_NEVER);
 
         web.setWebViewClient(new WebViewClient() {
             @Override

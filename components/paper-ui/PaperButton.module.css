@@ -133,3 +133,47 @@
     padding: 7px 13px 9px;
   }
 }
+
+/* ---------- press mark: pencil underline sweep (non-close buttons) ---------- */
+.pressMark {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 2px;
+  height: 8px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.pressMark svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.pressMark path {
+  fill: none;
+  stroke: var(--pencil);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: pressDraw 0.42s ease-out forwards;
+  opacity: 0.8;
+}
+
+@keyframes pressDraw {
+  0% {
+    stroke-dashoffset: 100;
+    opacity: 0.9;
+  }
+  70% {
+    stroke-dashoffset: 0;
+    opacity: 0.9;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
