@@ -9,7 +9,8 @@ import Stamp from "@/components/paper-ui/Stamp";
 import ScribblePrice from "@/components/paper-ui/ScribblePrice";
 import { dayOf, fmtMoney, netWorth, START_CASH, timeOf } from "@/lib/game";
 import type { Action, GameState, Speed } from "@/lib/game";
-import { MILESTONES } from "@/lib/game";
+import { MAGNATE_AT, MILESTONES } from "@/lib/game";
+import Magnate from "@/components/paper-ui/Magnate";
 import { coinSound, setMuted } from "@/lib/sound";
 import { useToast } from "@/lib/toast";
 import styles from "./Header.module.css";
@@ -33,6 +34,7 @@ export default function Header({
   const toast = useToast();
   const worth = netWorth(state);
   const [celebrate, setCelebrate] = useState<{ amt: number; k: number } | null>(null);
+  const [magnate, setMagnate] = useState<number | null>(null);
 
   // milestone congratulations — fires once per threshold, ever
   useEffect(() => {
@@ -41,10 +43,15 @@ export default function Header({
     if (hit) {
       dispatch({ type: "MILESTONE", amt: hit });
       coinSound();
-      setCelebrate({ amt: hit, k: Date.now() });
       toast(`🏆 milestone: net worth passed ${fmtMoney(hit)}!`, "good");
-      const t = window.setTimeout(() => setCelebrate(null), 2600);
-      return () => window.clearTimeout(t);
+      if (MAGNATE_AT[hit]) {
+        // the big five: he walks in himself, check in hand
+        setMagnate(hit);
+      } else {
+        setCelebrate({ amt: hit, k: Date.now() });
+        const t = window.setTimeout(() => setCelebrate(null), 2600);
+        return () => window.clearTimeout(t);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [worth]);
@@ -70,6 +77,15 @@ export default function Header({
   return (
     <PaperSheet tape="clip" rotation={-0.35} className={styles.sheet}>
       <PaperConfetti burst={celebrate ? 1 : 0} x="30%" y="30%" />
+      {magnate !== null && (
+        <Magnate
+          bonus={MAGNATE_AT[magnate]}
+          day={dayOf(state.tick)}
+          stocks={state.stocks}
+          onReceive={(b) => dispatch({ type: "GIFT", amt: b })}
+          onDone={() => setMagnate(null)}
+        />
+      )}
       <div className={styles.head}>
         <div className={styles.title}>
           <h1>Paper Trader</h1>

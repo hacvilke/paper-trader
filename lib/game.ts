@@ -21,7 +21,17 @@ export const DAILY_LOAN_RATE = 0.005; // interest charged at each closing bell
 export const SHORT_CAP = 0.25; // a new short position ≤ 25% of cash + holdings
 export const MARGIN_CALL_AT = 0.55; // forced cover when liability > 55% of assets
 export const SHORT_BORROW_RATE = 0.002; // daily borrow fee on short liability
-export const MILESTONES = [11_000, 15_000, 25_000, 50_000, 100_000, 250_000, 1_000_000];
+export const MILESTONES = [11_000, 15_000, 25_000, 50_000, 100_000, 250_000, 600_000, 1_000_000, 1_000_000_000];
+
+// the Magnate — owner of the best stock on the floor — shows up in person
+// at these net-worth marks, check in hand. he insists you sign for it.
+export const MAGNATE_AT: Record<number, number> = {
+  15_000: 1_500,
+  100_000: 8_000,
+  600_000: 30_000,
+  1_000_000: 50_000,
+  1_000_000_000: 1_000_000,
+};
 
 export const REWARD_MIN = 15;
 export const REWARD_MAX = 60;
@@ -150,6 +160,7 @@ export type Stock = {
   shockMag: number;
   shockSteps: number;
   hist: number[];
+  divY?: number; // cash yield paid on holdings every 5 days (undefined = non-payer)
   proc?: boolean; // procedural listing — can go bankrupt
   entry?: number; // IPO price on our tape
   doom?: number; // >0 = bankruptcy in progress; 0 = delist now
@@ -238,15 +249,16 @@ export type Action =
   | { type: "FACT_IPO" }
   | { type: "FOUND_BIZ"; name: string; sym: string; ind?: string }
   | { type: "MILESTONE"; amt: number }
+  | { type: "GIFT"; amt: number }
   | { type: "HYDRATE"; state: GameState };
 
 const DEFS: Array<
-  Pick<Stock, "sym" | "name" | "blurb" | "price" | "vol" | "drift" | "spreadPct" | "beta">
+  Pick<Stock, "sym" | "name" | "blurb" | "price" | "vol" | "drift" | "spreadPct" | "beta" | "divY">
 > = [
-  { sym: "PPRC", name: "Papyrus Corp", blurb: "The blue chip of reams.", price: 42.5, vol: 1.0, drift: 0.02, spreadPct: 0.12, beta: 1.2 },
+  { sym: "PPRC", name: "Papyrus Corp", blurb: "The blue chip of reams.", price: 42.5, vol: 1.0, drift: 0.02, spreadPct: 0.12, beta: 1.2, divY: 0.004 },
   { sym: "FOLD", name: "Fold & Sons", blurb: "Origami-adjacent logistics.", price: 18.25, vol: 1.5, drift: 0.03, spreadPct: 0.18, beta: 1.0 },
-  { sym: "INKW", name: "InkWell Inc.", blurb: "Controls the pens. Controls everything.", price: 77.0, vol: 1.2, drift: 0.012, spreadPct: 0.1, beta: 0.8 },
-  { sym: "STPL", name: "Staple Industries", blurb: "Holding it together since 1951.", price: 12.4, vol: 0.8, drift: 0.015, spreadPct: 0.15, beta: 0.7 },
+  { sym: "INKW", name: "InkWell Inc.", blurb: "Controls the pens. Controls everything.", price: 77.0, vol: 1.2, drift: 0.012, spreadPct: 0.1, beta: 0.8, divY: 0.003 },
+  { sym: "STPL", name: "Staple Industries", blurb: "Holding it together since 1951.", price: 12.4, vol: 0.8, drift: 0.015, spreadPct: 0.15, beta: 0.7, divY: 0.0035 },
   { sym: "SHRP", name: "Sharpen & Co.", blurb: "The pencil-pushers' pick.", price: 33.75, vol: 1.4, drift: 0.025, spreadPct: 0.16, beta: 1.1 },
   { sym: "MEMO", name: "MemoPad Ltd", blurb: "Sticky notes, sticky gains.", price: 55.6, vol: 1.9, drift: 0.02, spreadPct: 0.2, beta: 1.3 },
   { sym: "CRNG", name: "Cringold Paper", blurb: "Cheap pulp, wild swings.", price: 8.9, vol: 2.6, drift: 0.01, spreadPct: 0.45, beta: 1.6 },
@@ -256,26 +268,46 @@ const DEFS: Array<
 /** baseline prices, for the PAPER 500 index */
 export const BASE: Record<string, number> = Object.fromEntries(DEFS.map((d) => [d.sym, d.price]));
 
-const NEWS_POS = [
-  "{name} unveiled a 100% recyclable quarterly report. Market loved the vibes.",
-  "Insiders at {name} caught buying back shares with actual cash.",
-  "{name} upgraded to 'Strong Buy' by Moorthy's, a very trusted moose.",
-  "Merger rumors: {name} × MemoPad — sources say it's sticky.",
-  "{name} wins the city contract for every printer within 4 blocks.",
-  "A celebrity was seen journaling with {name} products. Demand spikes.",
-  "{name} announces a dividend payable in crisp A4 sheets.",
-  "{name} beats earnings — analysts call it 'unpressed potential'.",
+// ---- news that MATCHES the tape: the reporter reads the chart first ----
+const SURGE_TPL = [
+  "{name} is SURGING — the tape is one-way green and the floor is buzzing.",
+  "Order book swamped at {name}: buyers lifting every offer in sight.",
+  "{name} breaks to session highs; momentum chasers pile in.",
+  "Whispers of a takeover are lifting {name} — bids keep coming.",
 ];
-
-const NEWS_NEG = [
-  "{name} folds under pressure — paper trails everywhere.",
-  "Auditors find a coffee stain on {name}'s balance sheet.",
-  "Jam incident in {name}'s HQ printer; operations halted.",
-  "{name} CEO caught doodling during the earnings call.",
-  "Paper-cut lawsuit filed against {name}; shares bleed.",
-  "{name} downgraded to 'Damp Squib' by Moorthy's, a very trusted moose.",
-  "Rival startup 'Digital Memo' threatens {name}'s whole thing.",
-  "{name} accidentally shredded its own quarterly guidance.",
+const SLUMP_TPL = [
+  "{name} is sliding — sellers hit every bid and the crowd heads for the exits.",
+  "Heavy tape in {name}: a big holder is unloading, and it shows.",
+  "{name} breaks to session lows. Catching this knife is not advised.",
+  "Downgrade on {name}: Moorthy's sniffs the paper and says 'damp'.",
+];
+const CLIMB_TPL = [
+  "{name} grinds higher — quiet accumulation, steady bids.",
+  "{name} edges up as the street warms to the story. Nothing flashy, just bids.",
+  "Higher lows all morning at {name}: the climb is real.",
+  "{name} steady-to-up: insiders reportedly buying back shares.",
+];
+const SLIDE_TPL = [
+  "{name} drifts lower on light interest. No panic, just sellers.",
+  "{name} eases off — the morning crowd isn't biting.",
+  "Slow bleed in {name}; support is getting a test.",
+  "Paper-cut lawsuit chatter weighs on {name}; shares soften.",
+];
+const STEADY_TPL = [
+  "{name} rangebound — a flat tape and bored pencil traders.",
+  "All quiet at {name}: tight spread, no conviction either way.",
+  "{name} holds steady while the floor chases louder stories.",
+  "Nothing new at {name}: the stock is going sideways, and sideways is fine.",
+];
+const EARN_BEAT = [
+  "{name} files its quarterly paperwork: BEATS expectations. The moose approves.",
+  "{name} reports — numbers crisp as fresh ledger paper. Shares pop.",
+  "Earnings at {name}: revenue up, costs down. The tape does the rest.",
+];
+const EARN_MISS = [
+  "{name} files its quarterly paperwork: MISSES. A coffee stain on the numbers.",
+  "{name} reports — guidance soggy as wet cardboard. Shares sag.",
+  "Earnings at {name}: the moose squints at the ledger. Shares slip.",
 ];
 
 export const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -591,6 +623,7 @@ export function makeProcStock(existingSyms: string[]): Stock {
     shockMag: 0,
     shockSteps: 0,
     hist: histSeed,
+    divY: tier === "blue" && Math.random() < 0.45 ? Math.round((0.002 + Math.random() * 0.004) * 1000) / 1000 : undefined,
     proc: true,
     entry: px,
   };
@@ -790,32 +823,69 @@ export function reducer(state: GameState, action: Action): GameState {
         };
       });
 
-      // ---- occasional gossip shock (moves one stock for a few ticks) ----
+      // ---- the paper reads the tape BEFORE it writes: trend-matched news ----
       let news = [...extraNews];
       let stocksFinal = stocks;
-      if (extraNews.length === 0 && Math.random() < 0.05 && state.tick > 2) {
-        const idx = Math.floor(Math.random() * stocks.length);
-        const s = stocks[idx];
-        const good = Math.random() < 0.52;
-        const mag = (0.05 + Math.random() * 0.09) * (good ? 1 : -1);
-        stocksFinal = stocks.map((x, i) =>
-          i === idx
-            ? { ...x, shockMag: mag, shockSteps: 4, volNow: Math.min(x.vol * 3, x.volNow * 1.6) }
-            : x
-        );
-        const tpl = (good ? NEWS_POS : NEWS_NEG)[
-          Math.floor(Math.random() * (good ? NEWS_POS : NEWS_NEG).length)
-        ];
-        news = [
-          {
-            id: state.seq,
-            day: dayOf(state.tick),
-            time: timeOf(state.tick),
-            text: tpl.replace("{name}", s.name),
-            sym: s.sym,
-            tone: good ? "good" : "bad",
-          },
-        ];
+      const pick = <T,>(a: T[]): T => a[Math.floor(Math.random() * a.length)];
+      const dirOf = (st: (typeof stocks)[number]) => {
+        const dm = st.dayOpen ? (st.price - st.dayOpen) / st.dayOpen : 0;
+        const w = st.hist.slice(-9);
+        const wk = w.length > 4 ? (st.price - w[0]) / w[0] : 0;
+        return { dm, wk };
+      };
+      const mkNews = (st: (typeof stocks)[number], text: string, tone: "good" | "bad", id: number): NewsItem => ({
+        id,
+        day: dayOf(state.tick),
+        time: timeOf(state.tick),
+        text,
+        sym: st.sym,
+        tone,
+      });
+      if (extraNews.length === 0 && state.tick > 2) {
+        if (dayRoll && Math.random() < 0.5) {
+          // earnings morning: one company files its paperwork; the move leans its real trend
+          const alive = stocks.filter((x) => !x.doom);
+          const s = alive[Math.floor(Math.random() * alive.length)];
+          if (s) {
+            const { wk } = dirOf(s);
+            const beat = Math.random() < (wk >= 0 ? 0.72 : 0.3);
+            const mag = (0.03 + Math.random() * 0.05) * (beat ? 1 : -1);
+            const i = stocks.indexOf(s);
+            stocksFinal = stocks.map((x, j) =>
+              j === i ? { ...x, shockMag: mag, shockSteps: 3, volNow: Math.min(x.vol * 2, x.volNow * 1.4) } : x
+            );
+            news.push(mkNews(s, (beat ? pick(EARN_BEAT) : pick(EARN_MISS)).replace("{name}", s.name), beat ? "good" : "bad", state.seq));
+          }
+        }
+        if (news.length === 0 && Math.random() < 0.13) {
+          // beat reporter: describe the move that is actually happening, sometimes extend it
+          const s = stocks[Math.floor(Math.random() * stocks.length)];
+          const { dm, wk } = dirOf(s);
+          const inShock = s.shockSteps > 0 && s.shockMag !== 0;
+          let tone: "good" | "bad";
+          let text: string;
+          let kick = 0;
+          if (inShock && s.shockMag > 0) {
+            tone = "good"; text = pick(SURGE_TPL).replace("{name}", s.name); kick = s.shockMag * 0.3;
+          } else if (inShock) {
+            tone = "bad"; text = pick(SLUMP_TPL).replace("{name}", s.name); kick = s.shockMag * 0.3;
+          } else if (dm > 0.025 || wk > 0.05) {
+            tone = "good"; text = pick(CLIMB_TPL).replace("{name}", s.name);
+            if (Math.random() < 0.3) kick = 0.02 + Math.random() * 0.03;
+          } else if (dm < -0.025 || wk < -0.05) {
+            tone = "bad"; text = pick(SLIDE_TPL).replace("{name}", s.name);
+            if (Math.random() < 0.3) kick = -(0.02 + Math.random() * 0.03);
+          } else {
+            tone = Math.random() < 0.5 ? "good" : "bad"; text = pick(STEADY_TPL).replace("{name}", s.name);
+          }
+          if (kick !== 0) {
+            const i = stocks.indexOf(s);
+            stocksFinal = stocks.map((x, j) =>
+              j === i ? { ...x, shockMag: kick, shockSteps: 3, volNow: Math.min(x.vol * 2.5, x.volNow * 1.5) } : x
+            );
+          }
+          news.push(mkNews(s, text, tone, state.seq + 1));
+        }
       }
 
       // ---- the wider exchange: deaths & births (procedural stocks) ----
@@ -1073,17 +1143,32 @@ export function reducer(state: GameState, action: Action): GameState {
         };
       }
 
+      // ---- dividend mornings: steady payers share the till every 5 days ----
+      let dividendCash = 0;
+      const dividendNews: NewsItem[] = [];
+      if (dayRoll && dayOf(state.tick) % 5 === 0) {
+        for (const [sym, h] of Object.entries(state.holdings)) {
+          const st = stocksFinal.find((x) => x.sym === sym);
+          if (!st?.divY || h.qty < 1 || st.doom !== undefined) continue;
+          const pay = round2(h.qty * st.price * st.divY);
+          dividendCash = round2(dividendCash + pay);
+          dividendNews.push(
+            mkNews(st, `DIVIDEND: ${st.name} paid you $${pay.toFixed(2)} — $${(st.divY * 100).toFixed(1)}% per share you hold.`, "good", state.seq + 100 + dividendNews.length)
+          );
+        }
+      }
+
       const next: GameState = {
         ...state,
         tick: state.tick + 1,
         stocks: stocksFinal,
-        news,
+        news: [...dividendNews, ...news],
         seq: state.seq + news.length + forced + 1,
         moodDrift,
         moodSteps,
         debt,
         interestPaid,
-        cash: cashT,
+        cash: round2(cashT + dividendCash),
         shorts: shortsT,
         realized: realizedT,
         feesPaid: feesT,
@@ -1298,6 +1383,19 @@ export function reducer(state: GameState, action: Action): GameState {
       };
     }
 
+    case "GIFT": {
+      if (!(action.amt > 0)) return state;
+      const gift: NewsItem = {
+        id: state.seq,
+        day: dayOf(state.tick),
+        time: timeOf(state.tick),
+        text: `A check from The Magnate cleared: +$${fmtMoney(action.amt)}. Memo: "back the best stock."`,
+        sym: "",
+        tone: "good",
+      };
+      return { ...state, cash: round2(state.cash + action.amt), news: [gift, ...state.news].slice(0, 16), seq: state.seq + 1 };
+    }
+
     case "MILESTONE": {
       const got = state.milestones ?? [];
       if (got.includes(action.amt)) return state;
@@ -1321,22 +1419,45 @@ export function reducer(state: GameState, action: Action): GameState {
       const f = state.factory;
       if (f.cash < FACT_HIRE_FEE) return state;
       if (f.workers >= f.machines * 4 + 2) return state;
-      return { ...state, factory: { ...f, cash: round2(f.cash - FACT_HIRE_FEE), costs: round2(f.costs + FACT_HIRE_FEE), workers: f.workers + 1 } };
+      const back = f.workers === 0;
+      const hireNews: NewsItem[] = back
+        ? [{
+            id: state.seq, day: dayOf(state.tick), time: timeOf(state.tick), sym: "", tone: "good",
+            text: `${f.name || "Your company"} is hiring again: the floor lights are on and the presses hum.`,
+          }]
+        : [];
+      return {
+        ...state,
+        factory: { ...f, cash: round2(f.cash - FACT_HIRE_FEE), costs: round2(f.costs + FACT_HIRE_FEE), workers: f.workers + 1, rep: Math.min(100, f.rep + (back ? 2 : 0)) },
+        news: [...hireNews, ...state.news].slice(0, 16),
+        seq: state.seq + hireNews.length,
+      };
     }
 
     case "FACT_FIRE": {
       const f = state.factory;
       if (f.workers < 1) return state;
       const sev = Math.min(f.cash, FACT_FIRE_FEE);
+      const left = f.workers - 1;
+      const floorClear = left === 0 && f.machines > 0;
+      const fireNews: NewsItem[] = floorClear
+        ? [{
+            id: state.seq, day: dayOf(state.tick), time: timeOf(state.tick), sym: "", tone: "bad",
+            text: `${f.name || "Your company"} clears the floor: every desk emptied. The street notices — and so does the moose.`,
+          }]
+        : [];
       return {
         ...state,
         factory: {
           ...f,
           cash: round2(f.cash - sev),
           costs: round2(f.costs + sev),
-          workers: f.workers - 1,
+          workers: left,
           morale: Math.max(0, f.morale - 8),
+          rep: Math.max(0, f.rep - (floorClear ? 3 : 0)),
         },
+        news: [...fireNews, ...state.news].slice(0, 16),
+        seq: state.seq + fireNews.length,
       };
     }
 

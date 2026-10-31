@@ -1,0 +1,246 @@
+/* the Magnate — pencil-stick figure, bottom right. entirely decorative
+   motion: the eco gate (.lowfx) flattens him to a simple fade. */
+
+.wrap {
+  position: fixed;
+  right: 6px;
+  bottom: 96px;
+  z-index: 58;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.figure {
+  pointer-events: auto;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.svg {
+  width: 116px;
+  height: 152px;
+  display: block;
+  overflow: visible;
+}
+
+.svg line,
+.svg circle {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 3.4;
+  stroke-linecap: round;
+  filter: url(#rough-line);
+}
+
+.dot {
+  fill: var(--ink) !important;
+  stroke: none !important;
+  stroke-width: 0 !important;
+}
+
+.amt {
+  font-family: var(--font-hand);
+  font-size: 13px;
+  fill: var(--ink);
+  stroke: none;
+}
+
+.check rect {
+  fill: #fffdf6;
+  stroke: var(--ink);
+  stroke-width: 1.6;
+}
+
+.check line {
+  stroke: var(--pencil);
+  stroke-width: 1.4;
+}
+
+/* ---------- walk in ---------- */
+.in .svg {
+  animation: walkIn 1.2s cubic-bezier(0.22, 0.9, 0.3, 1) both;
+}
+
+.in .legA {
+  transform-origin: 64px 94px;
+  animation: legSwing 0.34s ease-in-out infinite alternate;
+}
+
+.in .legB {
+  transform-origin: 64px 94px;
+  animation: legSwing 0.34s ease-in-out infinite alternate-reverse;
+}
+
+.in .dude {
+  animation: dudeBob 0.34s ease-in-out infinite alternate;
+}
+
+@keyframes walkIn {
+  from {
+    transform: translateX(150px);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes legSwing {
+  from {
+    transform: rotate(16deg);
+  }
+  to {
+    transform: rotate(-16deg);
+  }
+}
+
+@keyframes dudeBob {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-2.4px);
+  }
+}
+
+/* ---------- holding the check out ---------- */
+.hold .legA,
+.hold .legB {
+  transform-origin: 64px 94px;
+  animation: none;
+}
+
+.hold .dude {
+  animation: dudeIdle 2.6s ease-in-out infinite alternate;
+}
+
+.hold .offer {
+  transform-origin: 64px 50px;
+  animation: offer 0.5s ease-out both;
+}
+
+@keyframes offer {
+  from {
+    transform: rotate(14deg);
+  }
+  to {
+    transform: rotate(-17deg);
+  }
+}
+
+@keyframes dudeIdle {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-1.6px);
+  }
+}
+
+/* ---------- bow + exit ---------- */
+.bye .svg {
+  animation: bowOut 1.7s ease-in both;
+}
+
+@keyframes bowOut {
+  0% {
+    transform: translateX(0) rotate(0);
+    opacity: 1;
+  }
+  30% {
+    transform: translateX(-4px) rotate(12deg);
+    opacity: 1;
+  }
+  62% {
+    transform: translateX(0) rotate(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(170px) rotate(-5deg);
+    opacity: 0;
+  }
+}
+
+/* ---------- the tag ---------- */
+.tag {
+  pointer-events: auto;
+  background: rgba(255, 253, 244, 0.94);
+  border: 1.4px solid rgba(59, 37, 15, 0.35);
+  border-radius: 8px 10px 8px 12px;
+  box-shadow: 2px 3px 5px -2px rgba(59, 37, 15, 0.45);
+  padding: 4px 8px 5px;
+  font-family: var(--font-hand);
+  font-size: 12.5px;
+  color: var(--ink);
+  transform: rotate(-1.6deg);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  animation: tagIn 0.5s ease-out both;
+}
+
+@keyframes tagIn {
+  from {
+    opacity: 0;
+    transform: rotate(-1.6deg) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(-1.6deg) translateY(0);
+  }
+}
+
+.in .tag {
+  animation: none;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.tag b {
+  color: var(--ink-green);
+}
+
+.later {
+  background: none;
+  border: none;
+  font-family: var(--font-type);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pencil);
+  cursor: pointer;
+  padding: 2px 3px;
+}
+
+/* ---------- eco mode: no theatre, just a quiet fade ---------- */
+.lowfx .wrap .svg,
+.lowfx .wrap .dude,
+.lowfx .wrap .legA,
+.lowfx .wrap .legB,
+.lowfx .wrap .offer,
+.lowfx .wrap .tag {
+  animation: none !important;
+}
+
+.lowfx .wrap {
+  animation: ecoFade 0.5s ease both;
+}
+
+@keyframes ecoFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
