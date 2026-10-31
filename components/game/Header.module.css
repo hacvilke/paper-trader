@@ -1,0 +1,209 @@
+.sheet {
+  padding: 16px 22px 10px;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 28px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title h1 {
+  font-size: 44px;
+  letter-spacing: 0.5px;
+}
+
+.sub {
+  font-family: var(--font-body);
+  color: var(--pencil);
+  font-size: 15px;
+  margin-top: 2px;
+  transform: rotate(-0.6deg);
+}
+
+.stats {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.lbl {
+  font-size: 11.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--pencil);
+}
+
+.val {
+  font-family: var(--font-hand);
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.good {
+  color: var(--ink-green);
+}
+
+.bad {
+  color: var(--ink-red);
+}
+
+.chip {
+  font-family: var(--font-hand);
+  font-size: 19px;
+  font-weight: 700;
+  background: linear-gradient(180deg, rgba(255, 242, 171, 0.92), rgba(248, 228, 140, 0.8));
+  padding: 3px 12px 5px;
+  transform: rotate(-1.6deg);
+  filter: drop-shadow(0 2px 3px rgba(59, 37, 15, 0.35));
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ink-red);
+  animation: pulse 1.4s infinite;
+}
+
+.dot.paused {
+  background: var(--pencil);
+  animation: none;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+}
+
+.controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.active {
+  text-decoration: underline wavy rgba(36, 86, 166, 0.75);
+  text-underline-offset: 4px;
+}
+
+.footnote {
+  margin-top: 6px;
+  color: var(--pencil);
+  font-size: 13px;
+  transform: rotate(-0.4deg);
+}
+
+@media (max-width: 720px) {
+  .title h1 {
+    font-size: 34px;
+  }
+
+  .stats {
+    gap: 16px;
+  }
+
+  .val {
+    font-size: 23px;
+  }
+}
+
+/* ---------- mobile header: compact, scrollable stat strip ---------- */
+@media (max-width: 760px) {
+  .sheet {
+    padding: 12px 14px 8px;
+  }
+
+  .head {
+    gap: 8px 16px;
+  }
+
+  .title h1 {
+    font-size: 29px;
+  }
+
+  .sub {
+    font-size: 13px;
+  }
+
+  .stats {
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 18px;
+    padding: 2px 2px 6px;
+    scrollbar-width: none;
+  }
+
+  .stats::-webkit-scrollbar {
+    display: none;
+  }
+
+  .stat {
+    flex: 0 0 auto;
+  }
+
+  .val {
+    font-size: 22px;
+  }
+
+  .chip {
+    font-size: 16px;
+    flex: 0 0 auto;
+  }
+
+  .debtChip {
+    font-size: 16px;
+    flex: 0 0 auto;
+  }
+
+  .controls {
+    width: 100%;
+    gap: 7px;
+  }
+
+  .footnote {
+    display: none;
+  }
+}
+
+.debtChip {
+  font-family: var(--font-hand);
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--ink-red);
+  background-image: var(--noise), linear-gradient(180deg, #ffd9d2, #ffc4ba);
+  padding: 3px 12px 5px;
+  transform: rotate(1.6deg);
+  filter: drop-shadow(0 2px 3px rgba(59, 37, 15, 0.35));
+  white-space: nowrap;
+}
+
+.archive {
+  font-family: var(--font-type);
+  font-size: 11.5px;
+  color: var(--pencil);
+  align-self: center;
+  white-space: nowrap;
+}

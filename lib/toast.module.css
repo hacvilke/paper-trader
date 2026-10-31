@@ -1,0 +1,73 @@
+.host {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.note {
+  position: relative;
+  width: min(320px, 82vw);
+  padding: 10px 14px 12px;
+  font-family: var(--font-hand);
+  font-weight: 600;
+  font-size: 19px;
+  line-height: 1.15;
+  color: #3d3418;
+  background: var(--nc, #ffee9c);
+  clip-path: polygon(0 0, 100% 0, 100% 94%, 90% 100%, 0 100%);
+  filter: drop-shadow(0 8px 10px rgba(30, 15, 2, 0.5));
+  transform: rotate(var(--rot, -1.2deg));
+  animation: toss 0.32s cubic-bezier(0.2, 1.4, 0.4, 1) backwards;
+}
+
+.note::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(315deg, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0) 60%);
+}
+
+.good {
+  --nc: #d3f4e0;
+}
+
+.bad {
+  --nc: #ffd6e6;
+}
+
+.info {
+  --nc: #ffee9c;
+}
+
+.leave {
+  animation: peel 0.5s ease-in forwards;
+}
+
+.mark {
+  font-weight: 700;
+}
+
+@keyframes toss {
+  from {
+    transform: translateY(26px) rotate(calc(var(--rot, -1.2deg) + 6deg));
+    opacity: 0;
+  }
+  to {
+    transform: rotate(var(--rot, -1.2deg));
+    opacity: 1;
+  }
+}
+
+@keyframes peel {
+  to {
+    transform: translate(-24px, 40px) rotate(calc(var(--rot, -1.2deg) - 14deg));
+    opacity: 0;
+  }
+}

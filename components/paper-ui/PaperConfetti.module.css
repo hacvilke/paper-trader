@@ -1,0 +1,31 @@
+.host {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 65;
+  overflow: hidden;
+}
+
+.piece {
+  position: absolute;
+  box-shadow: 0 1px 2px rgba(59, 37, 15, 0.35);
+  opacity: 0;
+  transform: translate(0, 0) rotate(0deg);
+  animation-name: fall;
+  animation-timing-function: cubic-bezier(0.3, 0.5, 0.65, 1);
+  animation-fill-mode: forwards;
+}
+
+@keyframes fall {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  78% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) rotate(var(--rot));
+  }
+}

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Paper Trader</string>
+    <!-- point this at wherever the game is deployed -->
+    <string name="game_url">https://3000-iwyun5trgcgcci0rih8xd.e2b.app</string>
+</resources>

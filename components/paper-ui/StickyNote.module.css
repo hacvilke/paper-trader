@@ -1,0 +1,56 @@
+.note {
+  position: relative;
+  padding: 12px 14px 14px;
+  font-family: var(--font-hand);
+  font-size: 19.5px;
+  font-weight: 600;
+  line-height: 1.18;
+  color: #3d3418;
+  background: var(--nc, #ffee9c);
+  clip-path: polygon(0 0, 100% 0, 100% 94%, 90% 100%, 0 100%);
+  filter: drop-shadow(0 7px 9px rgba(59, 37, 15, 0.45));
+  transform: rotate(var(--rot, -1.5deg));
+  transition: transform 0.16s ease;
+  animation: stick 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) backwards;
+}
+
+.note:hover {
+  transform: rotate(calc(var(--rot, -1.5deg) * 0.4)) translateY(-2px);
+}
+
+.note::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 26px;
+  height: 26px;
+  background: linear-gradient(315deg, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0) 60%);
+}
+
+.yellow {
+  --nc: #ffee9c;
+}
+
+.pink {
+  --nc: #ffd6e6;
+}
+
+.mint {
+  --nc: #d3f4e0;
+}
+
+.blue {
+  --nc: #d7e9ff;
+}
+
+@keyframes stick {
+  from {
+    transform: translateY(16px) rotate(calc(var(--rot, -1.5deg) + 5deg)) scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: rotate(var(--rot, -1.5deg));
+    opacity: 1;
+  }
+}

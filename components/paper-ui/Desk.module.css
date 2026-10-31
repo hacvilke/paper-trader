@@ -1,0 +1,91 @@
+.desk {
+  position: relative;
+  min-height: 100dvh;
+  overflow-x: clip;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- coffee rings ---------- */
+.stain1,
+.stain2 {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.stain1 {
+  width: 190px;
+  height: 190px;
+  right: 6%;
+  top: 130px;
+  background: radial-gradient(
+    closest-side,
+    rgba(0, 0, 0, 0) 58%,
+    rgba(84, 48, 14, 0.2) 64%,
+    rgba(84, 48, 14, 0.14) 72%,
+    rgba(0, 0, 0, 0) 78%
+  );
+  transform: rotate(8deg);
+}
+
+.stain2 {
+  width: 150px;
+  height: 150px;
+  left: 3%;
+  bottom: 22%;
+  background: radial-gradient(
+    closest-side,
+    rgba(0, 0, 0, 0) 55%,
+    rgba(70, 40, 10, 0.18) 62%,
+    rgba(70, 40, 10, 0.12) 70%,
+    rgba(0, 0, 0, 0) 76%
+  );
+}
+
+/* ---------- stray paper scraps ---------- */
+.scrap1,
+.scrap2 {
+  position: absolute;
+  background-image: var(--noise), linear-gradient(180deg, #fffdf2, #efe6cf);
+  box-shadow: 0 3px 7px -2px rgba(30, 15, 2, 0.5);
+  z-index: 0;
+}
+
+.scrap1 {
+  width: 70px;
+  height: 52px;
+  left: 4%;
+  top: 15%;
+  transform: rotate(14deg);
+}
+
+.scrap2 {
+  width: 56px;
+  height: 44px;
+  right: 9%;
+  bottom: 12%;
+  transform: rotate(-18deg);
+}
+
+.pencil {
+  position: fixed;
+  right: 2.5%;
+  bottom: 14px;
+  width: 250px;
+  z-index: 0;
+  opacity: 0.95;
+  filter: drop-shadow(0 4px 5px rgba(30, 15, 2, 0.45));
+  transform: rotate(-3deg);
+  pointer-events: none;
+}
+
+@media (max-width: 900px) {
+  .pencil {
+    display: none;
+  }
+}

@@ -1,0 +1,37 @@
+apply plugin: "com.android.application"
+
+android {
+    namespace "com.papertrader.app"
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.papertrader.app"
+        minSdk 24          // Android 7+ — covers Galaxy A05/A06 (Android 14) with room
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+    }
+
+    signingConfigs {
+        debug {} // release below is signed with the debug key so it installs anywhere
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.debug
+        }
+        debug {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+}
+
+dependencies {
+    implementation "androidx.webkit:webkit:1.11.0"
+}

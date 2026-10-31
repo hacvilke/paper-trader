@@ -1,0 +1,125 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(212px, 1fr));
+  gap: 22px 18px;
+}
+
+.card {
+  padding: 12px 14px 10px;
+}
+
+.selCard {
+  box-shadow:
+    0 3px 4px rgba(59, 37, 15, 0.3),
+    0 20px 32px -10px rgba(59, 37, 15, 0.62);
+  z-index: 2;
+}
+
+.hit {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  font-family: inherit;
+  position: relative;
+}
+
+.dimmed {
+  opacity: 0.45;
+  filter: grayscale(0.4);
+}
+
+.haltOverlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.symWrap {
+  position: relative;
+  display: inline-block;
+}
+
+.sym {
+  font-family: var(--font-hand);
+  font-weight: 700;
+  font-size: 30px;
+  letter-spacing: 0.04em;
+  color: var(--ink-blue);
+  line-height: 1;
+}
+
+.name {
+  display: block;
+  color: var(--pencil);
+  font-size: 14.5px;
+  margin: 1px 0 2px;
+}
+
+.priceRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
+.price {
+  font-family: var(--font-hand);
+  font-weight: 700;
+  font-size: 30px;
+}
+
+.pct {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-hand);
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.up {
+  color: var(--ink-green);
+}
+
+.down {
+  color: var(--ink-red);
+}
+
+.meta {
+  display: block;
+  margin-top: 5px;
+  font-family: var(--font-type);
+  font-size: 11px;
+  color: var(--pencil);
+}
+
+/* ---------- mobile: the board becomes a snap-scroll card carousel ---------- */
+@media (max-width: 760px) {
+  .grid {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    gap: 14px;
+    padding: 6px 4px 16px;
+    margin: 0 -2px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .card {
+    flex: 0 0 216px;
+    scroll-snap-align: center;
+  }
+}

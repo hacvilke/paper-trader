@@ -1,0 +1,238 @@
+.veil {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(38, 22, 8, 0.55);
+  backdrop-filter: blur(2px);
+  animation: fade 0.18s ease both;
+}
+
+.checkWrap {
+  width: min(600px, 94vw);
+  animation: present 0.42s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+  transform: rotate(-0.8deg);
+}
+
+.out {
+  animation: filed 0.45s ease-in both;
+}
+
+.torn {
+  animation: rip 0.36s ease-in both;
+}
+
+.check {
+  position: relative;
+  padding: 18px 22px 16px;
+  background-color: #fdfaf1;
+  background-image: var(--noise),
+    repeating-linear-gradient(112deg, rgba(36, 86, 166, 0.05) 0 1.5px, transparent 1.5px 7px),
+    linear-gradient(180deg, #fffef8, #f4eeda);
+  border: 1px solid rgba(59, 37, 15, 0.18);
+  outline: 3px double rgba(36, 86, 166, 0.4);
+  outline-offset: -9px;
+  box-shadow:
+    inset 0 0 30px rgba(160, 118, 58, 0.1),
+    0 24px 50px -18px rgba(20, 10, 2, 0.7);
+}
+
+.band {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 7px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(36, 86, 166, 0.55) 0 14px,
+    rgba(203, 67, 53, 0.5) 14px 28px
+  );
+  opacity: 0.55;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.bank {
+  font-family: var(--font-type);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.06em;
+}
+
+.bankNote {
+  font-family: var(--font-type);
+  font-size: 10px;
+  color: var(--pencil);
+}
+
+.checkNo {
+  margin-left: auto;
+  font-family: var(--font-type);
+  font-size: 13px;
+  color: var(--ink-red);
+}
+
+.dateRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--font-type);
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.lbl {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pencil);
+}
+
+.date {
+  border-bottom: 1.5px solid rgba(59, 37, 15, 0.3);
+  padding: 0 10px 2px;
+}
+
+.memo {
+  border-bottom: 1.5px solid rgba(59, 37, 15, 0.3);
+  padding: 0 10px 2px;
+  margin-left: auto;
+  max-width: 42%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 6px 0 8px;
+}
+
+.payee {
+  flex: 1;
+  font-family: var(--font-hand);
+  font-weight: 700;
+  font-size: 27px;
+  border-bottom: 1.5px solid rgba(59, 37, 15, 0.3);
+  padding: 0 8px 2px;
+  transform: rotate(-0.4deg);
+}
+
+.amountBox {
+  font-family: var(--font-type);
+  font-weight: 700;
+  font-size: 21px;
+  border: 1.5px solid rgba(59, 37, 15, 0.35);
+  background: rgba(255, 253, 244, 0.7);
+  padding: 3px 12px 5px;
+  white-space: nowrap;
+}
+
+.amountBox em {
+  font-style: normal;
+  color: var(--ink-green);
+  margin-right: 2px;
+}
+
+.words {
+  font-family: var(--font-hand);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ink);
+  border-bottom: 1.5px solid rgba(59, 37, 15, 0.3);
+  padding-bottom: 3px;
+  margin-bottom: 14px;
+  transform: rotate(-0.25deg);
+}
+
+.sigRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.sigBox {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  border-bottom: 1.5px solid rgba(59, 37, 15, 0.35);
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: 84px;
+  touch-action: none;
+  cursor: var(--cur-pencil);
+}
+
+.sigLbl {
+  position: absolute;
+  right: 4px;
+  bottom: 3px;
+  font-family: var(--font-type);
+  font-size: 10px;
+  color: var(--pencil);
+  pointer-events: none;
+}
+
+.micr {
+  font-family: var(--font-type);
+  font-size: 15px;
+  letter-spacing: 0.14em;
+  color: var(--ink);
+  opacity: 0.8;
+  padding-bottom: 4px;
+}
+
+.btns {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes present {
+  0% {
+    transform: translateY(70px) rotate(2.5deg) scale(0.94);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) rotate(-0.8deg) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes filed {
+  to {
+    transform: translateY(-90px) rotate(-7deg) scale(0.9);
+    opacity: 0;
+  }
+}
+
+@keyframes rip {
+  0% {
+    transform: rotate(-0.8deg);
+  }
+  100% {
+    transform: translate(60px, 160px) rotate(26deg) scale(0.85);
+    opacity: 0;
+  }
+}

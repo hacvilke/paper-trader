@@ -1,0 +1,132 @@
+.wrap {
+  position: relative;
+  z-index: 1;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 26px clamp(12px, 3vw, 36px) 46px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 350px;
+  gap: 26px;
+  align-items: start;
+}
+
+.left,
+.right {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  min-width: 0;
+}
+
+.sectionRow {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: -14px;
+}
+
+.tag {
+  display: inline-block;
+  background-image: var(--noise), linear-gradient(180deg, #fffdf3, #f3ebd6);
+  padding: 4px 18px 6px;
+  font-family: var(--font-hand);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  transform: rotate(-1.6deg);
+  filter: drop-shadow(0 3px 5px rgba(59, 37, 15, 0.45));
+  position: relative;
+}
+
+.tag::before {
+  content: "";
+  position: absolute;
+  left: -16px;
+  top: 50%;
+  width: 36px;
+  height: 14px;
+  transform: translateY(-50%) rotate(-38deg);
+  background: rgba(250, 245, 220, 0.65);
+  filter: drop-shadow(0 1px 1px rgba(30, 15, 2, 0.25));
+  clip-path: polygon(4% 0, 96% 6%, 100% 40%, 95% 100%, 5% 94%, 0 50%);
+}
+
+.mood {
+  font-family: var(--font-hand);
+  font-size: 21px;
+  font-weight: 700;
+  transform: rotate(-1deg);
+}
+
+.moodGood {
+  color: var(--ink-green);
+}
+
+.moodBad {
+  color: var(--ink-red);
+}
+
+.moodFlat {
+  color: var(--pencil);
+}
+
+.footer {
+  text-align: center;
+  font-family: var(--font-hand);
+  font-size: 19px;
+  color: rgba(255, 244, 222, 0.82);
+  text-shadow: 0 1px 3px rgba(30, 15, 2, 0.6);
+  padding-top: 4px;
+}
+
+.footer b {
+  color: #ffe9a8;
+}
+
+@media (max-width: 1020px) {
+  .main {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- mobile page shell ---------- */
+@media (max-width: 760px) {
+  .wrap {
+    padding: 14px 12px 24px;
+    gap: 16px;
+  }
+
+  .main {
+    gap: 18px;
+  }
+
+  .left,
+  .right {
+    gap: 18px;
+  }
+
+  .sectionRow {
+    margin-bottom: -10px;
+    gap: 12px;
+  }
+
+  .tag {
+    font-size: 18px;
+    padding: 3px 14px 5px;
+  }
+
+  .mood {
+    font-size: 17px;
+  }
+
+  .footer {
+    font-size: 15.5px;
+    padding-bottom: 6px;
+  }
+}

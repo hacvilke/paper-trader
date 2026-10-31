@@ -1,0 +1,74 @@
+.wrap {
+  overflow: hidden;
+  background-image: var(--noise), linear-gradient(180deg, #fffef8, #f2ebd8);
+  border-top: 2px dashed rgba(59, 37, 15, 0.28);
+  border-bottom: 2px dashed rgba(59, 37, 15, 0.28);
+  box-shadow: 0 4px 10px -4px rgba(59, 37, 15, 0.55);
+  transform: rotate(-0.3deg);
+}
+
+.track {
+  display: flex;
+  width: max-content;
+  animation: marquee 34s linear infinite;
+  will-change: transform;
+}
+
+.wrap:hover .track {
+  animation-play-state: paused;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  padding: 7px 13px;
+  white-space: nowrap;
+}
+
+.item {
+  font-family: var(--font-type);
+  font-size: 14px;
+  color: var(--ink);
+  display: inline-flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.sym {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.money {
+  font-variant-numeric: tabular-nums;
+}
+
+.up {
+  color: var(--ink-green);
+}
+
+.down {
+  color: var(--ink-red);
+}
+
+.sep {
+  color: rgba(59, 37, 15, 0.3);
+}
+
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (max-width: 760px) {
+  .item {
+    font-size: 12px;
+  }
+
+  .row {
+    gap: 16px;
+    padding: 5px 10px;
+  }
+}
