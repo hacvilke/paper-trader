@@ -66,6 +66,14 @@ jobs:
           mv app/api /tmp/api-backup
           STATIC_EXPORT=1 npx next build
 
+      - name: Convert extensionless pages to directories
+        run: |
+          cd .next-export
+          for f in exchange factory learn ledger; do
+            if [ -f "$f.html" ]; then mkdir -p "$f" && mv "$f.html" "$f/index.html"; fi
+          done
+          touch .nojekyll
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
