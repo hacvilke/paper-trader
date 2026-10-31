@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Paper Trader</string>
-    <!-- point this at wherever the game is deployed -->
-    <string name="game_url">https://hacvilke.github.io/paper-trader/</string>
+    <!-- the always-on server: full game + shared file cabinet, badges, wire & leaderboard -->
+    <string name="game_url">https://paper-trader-h1ko.onrender.com</string>
 </resources>

@@ -44,6 +44,12 @@ create a web service on render.com from this repo — it auto-reads
 
 ## Current build
 
+- **v1.1.0 (versionCode 2)** → default server: **https://paper-trader-h1ko.onrender.com**
+  (full multiplayer: shared saves, press badges, live leaderboard, the wire).
+  GitHub Pages remains available via the in-app ⋮ menu → server address.
+
+## Older builds
+
 - v1.0.0 APKs are committed under `apk/` (release + debug) and attached to the
   first Actions run. Rebuild anytime: Actions → Build Paper Trader APK.
 - The app points at the deployed game (see strings.xml). All accounts, saves
