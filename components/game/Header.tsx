@@ -13,6 +13,7 @@ import { MAGNATE_AT, MILESTONES } from "@/lib/game";
 import Magnate from "@/components/paper-ui/Magnate";
 import { coinSound, setMuted } from "@/lib/sound";
 import { useToast } from "@/lib/toast";
+import { useAuth } from "@/lib/auth";
 import styles from "./Header.module.css";
 
 const SPEEDS: Array<[string, Speed]> = [
@@ -32,6 +33,7 @@ export default function Header({
   saveStatus?: "idle" | "loading" | "saved" | "saving" | "offline";
 }) {
   const toast = useToast();
+  const { auth } = useAuth();
   const worth = netWorth(state);
   const [celebrate, setCelebrate] = useState<{ amt: number; k: number } | null>(null);
   const [magnate, setMagnate] = useState<number | null>(null);
@@ -67,6 +69,16 @@ export default function Header({
     if (confirmReset) {
       if (resetTimer.current) window.clearTimeout(resetTimer.current);
       setConfirmReset(false);
+      // tear up the incorporation papers too: release the ticker so
+      // another trader can found under that name
+      if (state.factory?.founded && auth) {
+        void window
+          .fetch(
+            `/api/biz?sym=${state.factory.sym}&user=${auth.user}&t=${auth.token}`,
+            { method: "DELETE" }
+          )
+          .catch(() => {});
+      }
       dispatch({ type: "RESET" });
     } else {
       setConfirmReset(true);

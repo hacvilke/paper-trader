@@ -236,6 +236,7 @@ export type GameState = {
   slips?: Slip[];
   factory: Factory;
   milestones?: number[];
+  ipoCursor?: number;
   seq: number;
   tut: boolean;
 };
@@ -267,6 +268,7 @@ export type Action =
   | { type: "GIFT"; amt: number }
   | { type: "PLACE_SLIP"; sym: string; side: "BUY" | "SELL"; qty: number; price: number }
   | { type: "CANCEL_SLIP"; id: number }
+  | { type: "LIST_FOREIGN"; listings: Array<{ sym: string; uname: string; name: string; px: number; at: number }> }
   | { type: "HYDRATE"; state: GameState };
 
 const DEFS: Array<
@@ -1723,7 +1725,58 @@ export function reducer(state: GameState, action: Action): GameState {
       return { ...state, speed: action.speed };
 
     case "RESET":
-      return initialGame();
+      // fresh desk, but the trophies stay on the shelf — no re-farming
+      // the Magnate by starting over
+      return { ...initialGame(), milestones: state.milestones };
+
+    case "LIST_FOREIGN": {
+      let stocks = state.stocks;
+      const news: NewsItem[] = [];
+      let cursor = state.ipoCursor ?? 0;
+      for (const L of action.listings) {
+        cursor = Math.max(cursor, L.at);
+        if (stocks.some((x) => x.sym === L.sym)) continue;
+        if (L.sym === state.factory?.sym) continue; // mine already trades here
+        const seed = Array.from({ length: 18 }, (_, i) =>
+          round2(L.px * (1 + 0.012 * Math.sin(i / 2.4) + (Math.random() - 0.5) * 0.02))
+        );
+        const stock: Stock = {
+          sym: L.sym,
+          name: L.name,
+          blurb: `founded and taken public by trader ${L.uname}. every share once sat on their desk.`,
+          price: L.px,
+          prev: seed[seed.length - 2],
+          dayOpen: L.px,
+          high: L.px,
+          low: L.px,
+          vol: 0.9 + Math.random() * 0.5,
+          volNow: 1.1,
+          spreadPct: 0.12 + Math.random() * 0.08,
+          beta: 0.8 + Math.random() * 0.8,
+          drift: 0.008 + Math.random() * 0.016,
+          trend: 0,
+          haltSteps: 0,
+          sessionVol: 0,
+          shockMag: 0,
+          shockSteps: 0,
+          hist: seed,
+          divY: Math.random() < 0.25 ? Math.round((0.002 + Math.random() * 0.003) * 1000) / 1000 : undefined,
+          entry: L.px,
+          // no `proc` flag: real companies don't randomly bankrupt
+        };
+        stocks = [...stocks, stock];
+        news.push({
+          id: state.seq + news.length,
+          day: dayOf(state.tick),
+          time: timeOf(state.tick),
+          text: `IPO: ${L.name} (${L.sym}) — founded by ${L.uname} — lists at $${L.px.toFixed(2)}. a player-run company, out in the world.`,
+          sym: L.sym,
+          tone: "good",
+        });
+      }
+      if (stocks === state.stocks) return { ...state, ipoCursor: cursor };
+      return { ...state, stocks, news: [...news, ...state.news].slice(0, 16), seq: state.seq + news.length, ipoCursor: cursor };
+    }
 
     case "TUT_OFF":
       return { ...state, tut: false };

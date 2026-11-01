@@ -49,6 +49,9 @@ async function ensureSchema() {
         name    text NOT NULL,
         created bigint NOT NULL DEFAULT 0
       );
+      ALTER TABLE biz ADD COLUMN IF NOT EXISTS listed boolean NOT NULL DEFAULT false;
+      ALTER TABLE biz ADD COLUMN IF NOT EXISTS px real;
+      ALTER TABLE biz ADD COLUMN IF NOT EXISTS listed_at bigint;
     `);
   } catch (e) {
     console.error("schema init failed:", e);

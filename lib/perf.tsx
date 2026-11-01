@@ -49,6 +49,46 @@ export function applyFx() {
 export default function PerfGate() {
   useEffect(() => {
     applyFx();
+    // ---- freeze watchdog ----
+    // Even good phones can drown in hand-drawn SVG filters once the
+    // board fills up. If frames stay slow for a while and the user
+    // hasn't picked a mode on purpose, trim the fx automatically.
+    let raf = 0;
+    let last = performance.now();
+    let acc = 0;
+    let frames = 0;
+    let badWindows = 0;
+    let done = false;
+    const loop = (t: number) => {
+      const gap = t - last;
+      last = t;
+      if (gap < 1000) {
+        acc += gap;
+        frames += 1;
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    const iv = window.setInterval(() => {
+      if (done) return;
+      const avg = frames > 30 ? acc / frames : 0;
+      acc = 0;
+      frames = 0;
+      // a healthy interactive page frames at ~16ms; >40ms sustained = struggling
+      if (avg > 40) badWindows += 1;
+      else badWindows = 0;
+      if (badWindows >= 2 && getFxPref() === "auto" && !document.documentElement.classList.contains("lowfx")) {
+        document.documentElement.classList.add("lowfx");
+        done = true;
+        window.clearInterval(iv);
+        window.cancelAnimationFrame(raf);
+        // eslint-disable-next-line no-console
+        console.info("paper fx trimmed automatically — pick a mode in your badge menu to override");
+      }
+    }, 4000);
+    return () => {
+      window.clearInterval(iv);
+      window.cancelAnimationFrame(raf);
+    };
   }, []);
   return null;
 }

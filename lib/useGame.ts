@@ -126,6 +126,31 @@ export function useGame(slot: string, token: string): {
     return () => window.removeEventListener("pagehide", flush);
   }, []);
 
+  // ---- the shared listing window: player IPOs reach every world ----
+  useEffect(() => {
+    if (!token || !state.tick) return;
+    const dayRolled = state.tick > 0 && state.tick % 26 === 0;
+    const caught = state.ipoCursor === undefined && state.tick % 5 === 0; // occasional catch-up
+    if (!dayRolled && !caught) return;
+    let stop = false;
+    window
+      .fetch(`/api/ipos?after=${state.ipoCursor ?? 0}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!stop && d.ok && (d.rows ?? []).length > 0) {
+          dispatch({
+            type: "LIST_FOREIGN",
+            listings: d.rows.map((r: { sym: string; uname: string; name: string; px: number; at: number }) => r),
+          });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      stop = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.tick, token]);
+
   // ---- market clock ----
   useEffect(() => {
     if (state.speed === 0) return;

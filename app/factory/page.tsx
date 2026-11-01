@@ -561,6 +561,23 @@ export default function FactoryPage() {
                     onClick={() => {
                       dispatch({ type: "FACT_IPO" });
                       wire(`rang the bell — ${f.sym} went public 🔔`);
+                      // publish to the shared listing window: every trader's
+                      // world lists this company on their next day roll
+                      if (auth) {
+                        void window
+                          .fetch("/api/biz", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              sym: f.sym,
+                              user: auth.user,
+                              name: f.name,
+                              px: fairSharePrice(f),
+                              token: auth.token,
+                            }),
+                          })
+                          .catch(() => {});
+                      }
                       toast(`🔔 ${f.sym} lists on the board — founder shares are in your portfolio!`, "good");
                     }}
                   >
