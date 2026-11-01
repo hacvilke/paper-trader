@@ -1,10 +1,10 @@
 {
   "applicationId": "com.hacvilke.papertrader",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "defaultMode": "window",
   "port": 0,
   "documentRoot": "/resources/",
-  "url": "https://paper-trader-h1ko.onrender.com/",
+  "url": "/",
   "modes": {
     "window": {
       "title": "Paper Trader",

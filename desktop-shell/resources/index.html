@@ -8,7 +8,7 @@
   html, body { margin: 0; height: 100%; overflow: hidden; }
   #game { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; background: #5f3c1c; }
 
-  /* the waking sheet — sits on top until the game has actually painted */
+  /* the waking sheet — on top until the game has actually painted */
   #veil {
     position: fixed; inset: 0; z-index: 10;
     background: #7c4f28;
@@ -26,7 +26,7 @@
     border: 1.5px solid #d9c9a6;
     border-radius: 10px;
     box-shadow: 0 14px 30px -14px rgba(30,15,4,.7);
-    padding: 26px 24px 28px;
+    padding: 26px 24px 26px;
     transform: rotate(-1.2deg);
     color: #33291d;
     text-align: center;
@@ -42,7 +42,7 @@
   .sub { color: #6f6558; font-size: 14px; margin-bottom: 16px; }
   .pen { font-size: 30px; animation: w 1.1s ease-in-out infinite alternate; }
   @keyframes w { from { transform: translateY(0) rotate(-8deg); } to { transform: translateY(-5px) rotate(6deg); } }
-  .foot { margin-top: 12px; font-size: 12.5px; color: #6f6558; line-height: 1.5; }
+  .foot { margin-top: 12px; font-size: 12.5px; color: #6f6558; line-height: 1.5; min-height: 19px; }
   button {
     font-family: inherit; font-size: 14px; cursor: pointer;
     background: #fffdf6; color: #33291d;
@@ -73,47 +73,53 @@
     var note = document.getElementById("note");
     var pen = document.getElementById("pen");
     var acts = document.getElementById("acts");
-    var started = false, loaded = false, timer = 0, tries = 0;
+    var loaded = false, timers = [];
 
-    function go(url) {
-      started = true;
+    function clearTimers() { while (timers.length) clearTimeout(timers.pop()); }
+
+    function go(url, label) {
+      clearTimers();
       loaded = false;
-      tries++;
-      veil.classList.remove("gone");
-      pen.style.display = "";
-      note.textContent = tries > 1 ? "knocking again (try " + tries + ")…" : "connecting to the live exchange";
+      note.textContent = label || "connecting to the live exchange…";
       acts.innerHTML = "";
-      clearTimeout(timer);
+      // status beats: the sheet NEVER goes away on its own — the game
+      // fades in underneath when it has actually loaded
+      timers.push(setTimeout(function () {
+        if (loaded) return;
+        note.innerHTML = "free servers nap — waking can take ~40s.";
+        btn("try the mirror floor", function () { go(MIRROR); });
+      }, 9000));
+      timers.push(setTimeout(function () {
+        if (loaded) return;
+        note.innerHTML = "still waking… hang in there, or try the mirror.";
+        btn("retry the live floor", function () { go(LIVE); });
+        btn("try the mirror floor", function () { go(MIRROR); });
+      }, 45000));
+      // the iframe request itself is the wake-up knock
       frame.src = url + "?t=" + Date.now();
-      timer = setTimeout(slow, 9000);
     }
 
-    function slow() {
-      if (loaded) return;
-      pen.style.display = "none";
-      note.innerHTML = "the floor is taking a while —<br>free servers nap and need ~40s to wake.";
-      acts.innerHTML = "";
-      var retry = document.createElement("button");
-      retry.textContent = "keep waiting (refresh)";
-      retry.className = "prime";
-      retry.onclick = function () { go(tries % 2 ? LIVE : MIRROR); };
-      var alt = document.createElement("button");
-      alt.textContent = "try the mirror floor";
-      alt.onclick = function () { go(MIRROR); };
-      acts.appendChild(retry);
-      acts.appendChild(alt);
+    function btn(text, fn) {
+      var b = document.createElement("button");
+      b.textContent = text;
+      b.onclick = fn;
+      acts.appendChild(b);
     }
 
     frame.addEventListener("load", function () {
-      // about:blank from the initial mount doesn't count
-      if (!started || frame.src === "about:blank") return;
+      if (frame.src === "about:blank") return;
       loaded = true;
-      clearTimeout(timer);
-      veil.classList.add("gone");
+      clearTimers();
+      note.textContent = "the floor is open.";
+      // small settle so the game's first paint lands before the fade
+      timers.push(setTimeout(function () {
+        veil.classList.add("gone");
+        clearTimers();
+      }, 450));
     });
 
-    // start once the sheet has definitely painted, so it's never blank
-    setTimeout(function () { go(LIVE); }, 450);
+    // paint the sheet first, then knock
+    setTimeout(function () { go(LIVE); }, 350);
   </script>
 </body>
 </html>
