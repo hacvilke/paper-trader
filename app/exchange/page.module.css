@@ -384,3 +384,52 @@
   font-size: 10.5px;
   white-space: nowrap;
 }
+
+/* ---- order slips pocket ---- */
+.pocket {
+  margin-top: 12px;
+  padding: 10px 14px 12px;
+}
+
+.pocketH {
+  font-family: var(--font-type);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pencil);
+  margin-bottom: 6px;
+}
+
+.pocketLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-hand);
+  font-weight: 600;
+  font-size: 15.5px;
+  padding: 3px 0;
+}
+
+.pocketX {
+  background: none;
+  border: none;
+  color: var(--ink-red);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+/* ---- numeric stability: cells keep their width, rows don't dance ---- */
+.price,
+.pct {
+  font-variant-numeric: tabular-nums;
+}
+
+.price {
+  min-width: 72px;
+  text-align: right;
+}
+
+.pct {
+  min-width: 64px;
+}

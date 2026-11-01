@@ -170,6 +170,20 @@ export type Holding = { qty: number; avg: number };
 
 export type TradeSide = "BUY" | "SELL" | "SHORT" | "COVER";
 
+/**
+ * OrderSlip — a pencil note pinned to the board: "buy if it dips to X"
+ * (limit) or "sell if it sinks to X" (stop). The clerk fills it against
+ * the real tape (bid/ask + fees) while you do something else.
+ */
+export type Slip = {
+  id: number;
+  sym: string;
+  side: "BUY" | "SELL"; // BUY = limit buy below the ask · SELL = stop-loss below the bid
+  qty: number;
+  price: number;
+  day: number;
+};
+
 export type Trade = {
   id: number;
   day: number;
@@ -219,6 +233,7 @@ export type GameState = {
   shortFeesPaid: number;
   bonusesTotal: number;
   pendingCheck: { amount: number; day: number } | null;
+  slips?: Slip[];
   factory: Factory;
   milestones?: number[];
   seq: number;
@@ -250,6 +265,8 @@ export type Action =
   | { type: "FOUND_BIZ"; name: string; sym: string; ind?: string }
   | { type: "MILESTONE"; amt: number }
   | { type: "GIFT"; amt: number }
+  | { type: "PLACE_SLIP"; sym: string; side: "BUY" | "SELL"; qty: number; price: number }
+  | { type: "CANCEL_SLIP"; id: number }
   | { type: "HYDRATE"; state: GameState };
 
 const DEFS: Array<
@@ -1143,6 +1160,90 @@ export function reducer(state: GameState, action: Action): GameState {
         };
       }
 
+      // ---- the clerk: order slips fill against the fresh tape ----
+      let slipsT = state.slips ?? [];
+      const slipNews: NewsItem[] = [];
+      if (slipsT.length > 0) {
+        const still: Slip[] = [];
+        for (const sl of slipsT) {
+          const st = stocksFinal.find((x) => x.sym === sl.sym);
+          if (!st || st.doom !== undefined) {
+            slipNews.push({
+              id: state.seq + 200 + slipNews.length, day: dayOf(state.tick), time: timeOf(state.tick),
+              sym: sl.sym, tone: "bad",
+              text: `A slip on ${sl.sym} is void — that listing is gone from the window.`,
+            });
+            continue;
+          }
+          if (st.haltSteps > 0) {
+            still.push(sl); // halted: the clerk waits
+            continue;
+          }
+          if (sl.side === "BUY") {
+            const a = askOf(st);
+            if (a <= sl.price + 1e-9) {
+              const cost = round2(sl.qty * a + FEE);
+              if (cost > cashT + 1e-9) {
+                slipNews.push({
+                  id: state.seq + 200 + slipNews.length, day: dayOf(state.tick), time: timeOf(state.tick),
+                  sym: sl.sym, tone: "bad",
+                  text: `A buy slip on ${sl.sym} bounced — not enough cash when it came due. Voided.`,
+                });
+                continue;
+              }
+              cashT = round2(cashT - cost);
+              feesT = round2(feesT + FEE);
+              const h = state.holdings[sl.sym];
+              const nq = (h?.qty ?? 0) + sl.qty;
+              state.holdings[sl.sym] = {
+                qty: nq,
+                avg: round2(((h ? h.avg * h.qty : 0) + sl.qty * a) / nq),
+              };
+              tradesT = [
+                ...tradesT,
+                { id: state.seq + 300 + slipNews.length, day: dayOf(state.tick), time: timeOf(state.tick), side: "BUY" as const, sym: sl.sym, qty: sl.qty, price: a, total: round2(-cost) },
+              ].slice(-50);
+              slipNews.push({
+                id: state.seq + 200 + slipNews.length, day: dayOf(state.tick), time: timeOf(state.tick),
+                sym: sl.sym, tone: "good",
+                text: `SLIP FILLED: BOT ${sl.sym} ×${sl.qty} @ ${a.toFixed(2)} — your pencil order from day ${sl.day}, filled at your price or better.`,
+              });
+            } else still.push(sl);
+          } else {
+            const b = bidOf(st);
+            if (b <= sl.price - 1e-9) {
+              const h = state.holdings[sl.sym];
+              const n = Math.min(sl.qty, h?.qty ?? 0);
+              if (n < 1) {
+                slipNews.push({
+                  id: state.seq + 200 + slipNews.length, day: dayOf(state.tick), time: timeOf(state.tick),
+                  sym: sl.sym, tone: "bad",
+                  text: `A sell slip on ${sl.sym} is void — you no longer hold those shares.`,
+                });
+                continue;
+              }
+              const proceeds = round2(n * b - FEE);
+              const pnl = round2((b - h.avg) * n);
+              cashT = round2(cashT + proceeds);
+              feesT = round2(feesT + FEE);
+              realizedT = round2(realizedT + pnl);
+              if (h.qty - n <= 0) delete state.holdings[sl.sym];
+              else state.holdings[sl.sym] = { qty: h.qty - n, avg: h.avg };
+              tradesT = [
+                ...tradesT,
+                { id: state.seq + 300 + slipNews.length, day: dayOf(state.tick), time: timeOf(state.tick), side: "SELL" as const, sym: sl.sym, qty: n, price: b, total: round2(proceeds) },
+              ].slice(-50);
+              slipNews.push({
+                id: state.seq + 200 + slipNews.length, day: dayOf(state.tick), time: timeOf(state.tick),
+                sym: sl.sym, tone: pnl >= 0 ? "good" : "bad",
+                text: `SLIP FILLED: SOLD ${sl.sym} ×${n} @ ${b.toFixed(2)} — the stop caught the fall. Round trip ${pnl >= 0 ? "+" : ""}${fmtMoney(pnl)}.`,
+              });
+            } else still.push(sl);
+          }
+        }
+        slipsT = still;
+      }
+
       // ---- dividend mornings: steady payers share the till every 5 days ----
       let dividendCash = 0;
       const dividendNews: NewsItem[] = [];
@@ -1162,8 +1263,9 @@ export function reducer(state: GameState, action: Action): GameState {
         ...state,
         tick: state.tick + 1,
         stocks: stocksFinal,
-        news: [...dividendNews, ...news],
-        seq: state.seq + news.length + forced + 1,
+        news: [...slipNews, ...dividendNews, ...news],
+        seq: state.seq + news.length + forced + 1 + slipNews.length,
+        slips: slipsT,
         moodDrift,
         moodSteps,
         debt,
@@ -1381,6 +1483,36 @@ export function reducer(state: GameState, action: Action): GameState {
         },
         seq: state.seq + 1,
       };
+    }
+
+    case "PLACE_SLIP": {
+      const st = state.stocks.find((x) => x.sym === action.sym);
+      if (!st || st.doom !== undefined || st.haltSteps > 0) return state;
+      const qty = Math.floor(action.qty);
+      if (qty < 1 || !(action.price > 0) || !isFinite(action.price)) return state;
+      const slips = state.slips ?? [];
+      if (slips.length >= 5) return state; // pocket holds five slips, that's the desk space
+      if (slips.some((s) => s.sym === action.sym && s.side === action.side)) return state;
+      const ask = askOf(st);
+      const bid = bidOf(st);
+      // a limit BUY waits below the tape; a stop SELL waits under it
+      if (action.side === "BUY" && !(action.price < ask)) return state;
+      if (action.side === "SELL" && !(action.price <= bid)) return state;
+      const slip: Slip = {
+        id: state.seq,
+        sym: action.sym,
+        side: action.side,
+        qty,
+        price: round2(action.price),
+        day: dayOf(state.tick),
+      };
+      return { ...state, slips: [...slips, slip] };
+    }
+
+    case "CANCEL_SLIP": {
+      const slips = (state.slips ?? []).filter((s) => s.id !== action.id);
+      if (slips.length === (state.slips ?? []).length) return state;
+      return { ...state, slips };
     }
 
     case "GIFT": {

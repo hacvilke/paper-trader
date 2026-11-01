@@ -90,6 +90,7 @@ export default function Page() {
               short={state.shorts[stock.sym]}
               cash={state.cash}
               holdVal={holdingsValue(state)}
+              slips={(state.slips ?? []).filter((s) => s.sym === stock.sym)}
               dispatch={dispatch}
             />
           </div>

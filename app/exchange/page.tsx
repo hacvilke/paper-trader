@@ -10,6 +10,7 @@ import Hint from "@/components/paper-ui/Hint";
 import { ArrowDown, ArrowUp } from "@/components/paper-ui/doodles";
 import { useMarket } from "@/lib/market";
 import { useAuth } from "@/lib/auth";
+import { useToast } from "@/lib/toast";
 import { handOff } from "@/lib/handoff";
 import { fmtMoney, volWord } from "@/lib/game";
 import styles from "./page.module.css";
@@ -25,8 +26,9 @@ const ago = (ts: number) => {
 };
 
 export default function ExchangePage() {
-  const { state } = useMarket();
+  const { state, dispatch } = useMarket();
   const { auth } = useAuth();
+  const toast = useToast();
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
   const [lb, setLb] = useState<LbRow[]>([]);
@@ -161,6 +163,31 @@ export default function ExchangePage() {
             freeze · “new listing” names can bankrupt: shares get voided
           </div>
         </PaperSheet>
+
+        {(state.slips ?? []).length > 0 && (
+          <PaperSheet tape="pin" rotation={-0.7} className={styles.pocket}>
+            <div className={styles.pocketH}>
+              order slips — the clerk works these tick by tick
+            </div>
+            {(state.slips ?? []).map((s) => (
+              <span key={s.id} className={styles.pocketLine}>
+                <b>{s.sym}</b> {s.side === "BUY" ? "buy" : "sell"} ×{s.qty} @ {s.price.toFixed(2)} ·{" "}
+                {s.side === "BUY" ? "fills if the ask dips" : "sells if the bid sinks"} · day {s.day}
+                <button
+                  className={styles.pocketX}
+                  title="tear up this slip"
+                  aria-label={`tear up slip on ${s.sym}`}
+                  onClick={() => {
+                    dispatch({ type: "CANCEL_SLIP", id: s.id });
+                    toast("Slip torn up.", "info");
+                  }}
+                >
+                  ✕
+                </button>
+              </span>
+            ))}
+          </PaperSheet>
+        )}
 
         <div className={styles.two}>
           <PaperSheet tape="pin" rotation={-0.5} className={styles.lb}>

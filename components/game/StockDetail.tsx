@@ -12,7 +12,7 @@ import PaperConfetti from "@/components/paper-ui/PaperConfetti";
 import { ArrowDown, ArrowUp } from "@/components/paper-ui/doodles";
 import { useToast } from "@/lib/toast";
 import { askOf, bidOf, FEE, fmtK, fmtMoney, maxShortQty, volWord } from "@/lib/game";
-import type { Action, Holding, ShortPos, Stock } from "@/lib/game";
+import type { Action, Holding, ShortPos, Slip, Stock } from "@/lib/game";
 import { coinSound, sadSound, stampSound } from "@/lib/sound";
 import { useAuth } from "@/lib/auth";
 import styles from "./StockDetail.module.css";
@@ -23,6 +23,7 @@ export default function StockDetail({
   short,
   cash,
   holdVal,
+  slips,
   dispatch,
 }: {
   stock: Stock;
@@ -30,6 +31,7 @@ export default function StockDetail({
   short?: ShortPos;
   cash: number;
   holdVal: number;
+  slips: Slip[];
   dispatch: Dispatch<Action>;
 }) {
   const toast = useToast();
@@ -47,6 +49,9 @@ export default function StockDetail({
   const [qtyRaw, setQtyRaw] = useState("10");
   const [stamp, setStamp] = useState<{ side: "BUY" | "SELL"; k: number } | null>(null);
   const [burst, setBurst] = useState(0);
+  const [slipOpen, setSlipOpen] = useState(false);
+  const [slipSide, setSlipSide] = useState<"BUY" | "SELL">("BUY");
+  const [slipPrice, setSlipPrice] = useState("");
 
   const qty = Math.max(0, Math.floor(Number(qtyRaw) || 0));
   const bid = bidOf(stock);
@@ -140,6 +145,30 @@ export default function StockDetail({
     } else {
       toast(`Covered ${stock.sym} ×${n} — exactly even. The moose blinks.`, "info");
     }
+  }
+
+  function placeSlip() {
+    if (halted) return toast("Trading is halted on this one. Breathe.", "bad");
+    const p = Math.round(Number(slipPrice) * 100) / 100;
+    if (!(p > 0)) return toast("Write the trigger price on the slip first.", "info");
+    if (qty < 1) return toast("Write how many shares first.", "info");
+    if (slipSide === "BUY" && p >= ask)
+      return toast(`A limit buy waits BELOW the tape — under ${fmtMoney(ask)}.`, "bad");
+    if (slipSide === "SELL" && p > bid)
+      return toast(`A stop-loss waits BELOW the bid — ${fmtMoney(bid)} or lower.`, "bad");
+    if (slips.some((s) => s.side === slipSide))
+      return toast(`You already have a ${slipSide === "BUY" ? "limit buy" : "stop"} slip on ${stock.sym}.`, "bad");
+    dispatch({ type: "PLACE_SLIP", sym: stock.sym, side: slipSide, qty, price: p });
+    stampSound();
+    wire(`LEFT A SLIP: ${slipSide === "BUY" ? "buy" : "sell"} ${stock.sym} ×${qty} if it hits ${p.toFixed(2)}`);
+    toast(
+      slipSide === "BUY"
+        ? `Slip pinned: buy ${qty} if the ask dips to ${fmtMoney(p)}. The clerk watches the tape.`
+        : `Slip pinned: sell ${qty} if the bid sinks to ${fmtMoney(p)}. Your stop is set.`,
+      "good"
+    );
+    setSlipOpen(false);
+    setSlipPrice("");
   }
 
   const up = stock.price >= stock.prev;
@@ -297,7 +326,99 @@ export default function StockDetail({
             )}
           </>
         )}
+        <PaperButton
+          small
+          tone="pencil"
+          title="leave a pencil order the clerk fills while you're busy: limit buy on a dip, or a stop-loss sell"
+          onClick={() => {
+            setSlipOpen((v) => {
+              const opening = !v;
+              if (opening) {
+                setSlipSide(held > 0 ? "SELL" : "BUY");
+                setSlipPrice((held > 0 ? bid * 0.95 : ask * 0.97).toFixed(2));
+              }
+              return opening;
+            });
+          }}
+        >
+          slip ✎
+        </PaperButton>
       </div>
+
+      {slipOpen && (
+        <div className={styles.slipForm}>
+          <div className={styles.slipHead}>
+            order slip — the clerk fills it tick by tick (pocket holds 5)
+          </div>
+          <div className={styles.slipRow}>
+            <PaperButton
+              small
+              tone={slipSide === "BUY" ? "green" : "pencil"}
+              title={`limit buy: fills when the ask dips to your price (you pay your price or better). now ${ask.toFixed(2)}`}
+              onClick={() => {
+                setSlipSide("BUY");
+                setSlipPrice((ask * 0.97).toFixed(2));
+              }}
+            >
+              limit buy
+            </PaperButton>
+            <PaperButton
+              small
+              tone={slipSide === "SELL" ? "red" : "pencil"}
+              title={`stop-loss: fills when the bid sinks to your price (protection while you're away). now ${bid.toFixed(2)}`}
+              onClick={() => {
+                setSlipSide("SELL");
+                setSlipPrice((bid * 0.95).toFixed(2));
+              }}
+            >
+              stop-loss
+            </PaperButton>
+            <label className={styles.qtyLbl}>
+              if it hits
+              <input
+                className={styles.qty}
+                type="number"
+                min={0.01}
+                step={0.01}
+                value={slipPrice}
+                onChange={(e) => setSlipPrice(e.target.value)}
+                inputMode="decimal"
+                aria-label="trigger price"
+              />
+            </label>
+            <PaperButton small tone="green" onClick={placeSlip} disabled={halted}>
+              pin ×{qty || "—"}
+            </PaperButton>
+          </div>
+          <div className={styles.slipNote}>
+            {slipSide === "BUY"
+              ? `fills only when the ask reaches your price — you never overpay. fee $${FEE.toFixed(2)} at fill; needs the cash then.`
+              : `fills when the bid falls to your price — your seatbelt while you're away. fee $${FEE.toFixed(2)} at fill.`}
+          </div>
+          {slips.length > 0 && (
+            <div className={styles.slipList}>
+              {slips.map((s) => (
+                <span key={s.id} className={styles.slipLine}>
+                  {s.side === "BUY" ? "buy" : "sell"} ×{s.qty} @ {s.price.toFixed(2)} · day {s.day}
+                  <PaperButton
+                    small
+                    tone="red"
+                    fx="x"
+                    title="tear up this slip"
+                    ariaLabel="tear up this slip"
+                    onClick={() => {
+                      dispatch({ type: "CANCEL_SLIP", id: s.id });
+                      toast("Slip torn up.", "info");
+                    }}
+                  >
+                    ✕
+                  </PaperButton>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className={styles.preview}>
         {qty > 0 && !halted ? (

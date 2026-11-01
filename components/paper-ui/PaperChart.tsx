@@ -40,9 +40,22 @@ export default function PaperChart({
   const over = overlay && overlay.length > 1 ? pctSeries(overlay) : null;
 
   const all = over ? [...main, ...over] : main;
-  const min = Math.min(...all);
-  const max = Math.max(...all);
-  const span = max - min || 1;
+  // STABLE BOUNDS: snap min/max to a "nice" 1-2-5 step so ordinary
+  // ticks don't redraw the whole sheet — the line only re-scales when
+  // it actually crosses a gridline. (No more button-dodge on phones.)
+  let min = Math.min(...all);
+  let max = Math.max(...all);
+  const rawStep = (max - min) / 4 || Math.abs(max) * 0.02 || 1;
+  const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const norm = rawStep / mag;
+  const step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
+  min = Math.floor(min / step) * step;
+  max = Math.ceil(max / step) * step;
+  if (max - min < 1e-9) {
+    max += step;
+    min -= step;
+  }
+  const span = max - min;
 
   const toPts = (arr: number[]) =>
     arr.map((v, i) => {
