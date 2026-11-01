@@ -80,6 +80,7 @@ export default function Header({
           .catch(() => {});
       }
       dispatch({ type: "RESET" });
+      window.dispatchEvent(new Event("pt-flush")); // pin the fresh desk to the cabinet NOW
     } else {
       setConfirmReset(true);
       resetTimer.current = window.setTimeout(() => setConfirmReset(false), 2600);

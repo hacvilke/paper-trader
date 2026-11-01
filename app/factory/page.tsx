@@ -71,7 +71,9 @@ export default function FactoryPage() {
     if (!state.factory?.listed) return;
     let stop = false;
     const load = () =>
-      window
+      document.hidden
+        ? Promise.resolve()
+        : window
         .fetch(`/api/owners?sym=${state.factory.sym}`, { cache: "no-store" })
         .then((r) => r.json())
         .then((d) => {

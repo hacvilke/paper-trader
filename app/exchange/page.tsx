@@ -41,6 +41,7 @@ export default function ExchangePage() {
   useEffect(() => {
     let stop = false;
     const load = async () => {
+      if (document.hidden) return; // no polls in your pocket
       try {
         const [lbR, feedR] = await Promise.all([
           window.fetch("/api/leaderboard", { cache: "no-store" }).then((r) => r.json()),

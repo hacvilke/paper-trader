@@ -1164,6 +1164,7 @@ export function reducer(state: GameState, action: Action): GameState {
 
       // ---- the clerk: order slips fill against the fresh tape ----
       let slipsT = state.slips ?? [];
+      const holdingsT: Record<string, Holding> = { ...state.holdings }; // never mutate live state
       const slipNews: NewsItem[] = [];
       if (slipsT.length > 0) {
         const still: Slip[] = [];
@@ -1195,9 +1196,9 @@ export function reducer(state: GameState, action: Action): GameState {
               }
               cashT = round2(cashT - cost);
               feesT = round2(feesT + FEE);
-              const h = state.holdings[sl.sym];
+              const h = holdingsT[sl.sym];
               const nq = (h?.qty ?? 0) + sl.qty;
-              state.holdings[sl.sym] = {
+              holdingsT[sl.sym] = {
                 qty: nq,
                 avg: round2(((h ? h.avg * h.qty : 0) + sl.qty * a) / nq),
               };
@@ -1214,7 +1215,7 @@ export function reducer(state: GameState, action: Action): GameState {
           } else {
             const b = bidOf(st);
             if (b <= sl.price - 1e-9) {
-              const h = state.holdings[sl.sym];
+              const h = holdingsT[sl.sym];
               const n = Math.min(sl.qty, h?.qty ?? 0);
               if (n < 1) {
                 slipNews.push({
@@ -1229,8 +1230,8 @@ export function reducer(state: GameState, action: Action): GameState {
               cashT = round2(cashT + proceeds);
               feesT = round2(feesT + FEE);
               realizedT = round2(realizedT + pnl);
-              if (h.qty - n <= 0) delete state.holdings[sl.sym];
-              else state.holdings[sl.sym] = { qty: h.qty - n, avg: h.avg };
+              if (h.qty - n <= 0) delete holdingsT[sl.sym];
+              else holdingsT[sl.sym] = { qty: h.qty - n, avg: h.avg };
               tradesT = [
                 ...tradesT,
                 { id: state.seq + 300 + slipNews.length, day: dayOf(state.tick), time: timeOf(state.tick), side: "SELL" as const, sym: sl.sym, qty: n, price: b, total: round2(proceeds) },
@@ -1268,6 +1269,7 @@ export function reducer(state: GameState, action: Action): GameState {
         news: [...slipNews, ...dividendNews, ...news],
         seq: state.seq + news.length + forced + 1 + slipNews.length,
         slips: slipsT,
+        holdings: holdingsT,
         moodDrift,
         moodSteps,
         debt,

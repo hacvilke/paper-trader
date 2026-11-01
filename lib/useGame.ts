@@ -49,16 +49,19 @@ export function useGame(slot: string, token: string): {
       ? `/api/save?as=${encodeURIComponent(t.slot)}&t=${encodeURIComponent(t.token)}`
       : "/api/save?slot=main";
 
-  // ---- load: localStorage immediately, then the cabinet if newer ----
+  // ---- load: localStorage immediately, then the cabinet if NEWER ----
+  // "newer" is decided by savedAt (wall clock at write), NOT tick —
+  // otherwise a reset (tick back to ~0) loses to the stale pre-reset
+  // save and the old empire resurrects. Most-recent ink wins, period.
   useEffect(() => {
     setSaveStatus("loading");
-    let localTick = -1;
+    let localAt = -1;
     try {
       const raw = window.localStorage.getItem(KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (plausiblyValid(parsed)) {
-          localTick = parsed.tick;
+          localAt = Number((parsed as { savedAt?: number }).savedAt ?? 0);
           dispatch({ type: "HYDRATE", state: parsed });
         }
       }
@@ -71,7 +74,10 @@ export function useGame(slot: string, token: string): {
         const r = await window.fetch(target({ slot, token }), { cache: "no-store" });
         if (r.ok) {
           const parsed = await r.json();
-          if (plausiblyValid(parsed) && parsed.tick > localTick) {
+          if (
+            plausiblyValid(parsed) &&
+            Number((parsed as { savedAt?: number }).savedAt ?? 0) >= localAt
+          ) {
             dispatch({ type: "HYDRATE", state: parsed });
           }
         }
@@ -83,10 +89,36 @@ export function useGame(slot: string, token: string): {
     })();
   }, [slot, token]);
 
-  // ---- archive loop: flush every few seconds once loaded ----
+  // ---- instant flush on demand (RESET fires this so a quick app-kill
+  //      can't resurrect the old desk) ----
+  useEffect(() => {
+    const flushNow = () => {
+      if (!readyRef.current) return;
+      const s = { ...stateRef.current, savedAt: Date.now() };
+      try {
+        window.localStorage.setItem(KEY, JSON.stringify(s));
+      } catch {
+        /* ignore */
+      }
+      window
+        .fetch(target(slotRef.current), {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(s),
+          keepalive: true,
+        })
+        .catch(() => {});
+    };
+    window.addEventListener("pt-flush", flushNow);
+    return () => window.removeEventListener("pt-flush", flushNow);
+  }, []);
+
+  // ---- archive loop: flush every few seconds once loaded
+  //      (skipped while hidden — the pagehide beacon covers exits;
+  //       writing a big blob every 4s in a background tab is waste) ----
   useEffect(() => {
     const id = window.setInterval(() => {
-      if (!readyRef.current) return;
+      if (!readyRef.current || document.hidden) return;
       const s = stateRef.current;
       try {
         window.localStorage.setItem(KEY, JSON.stringify(s));
@@ -151,12 +183,29 @@ export function useGame(slot: string, token: string): {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.tick, token]);
 
-  // ---- market clock ----
+  // ---- market clock: self-scheduling, burst-proof ----
+  // setInterval queues ticks when the tab stalls (throttling, GC, a
+  // slow render) and they all fire at once — the "game froze" feel.
+  // A setTimeout chain fires at most one tick at a time, skips ahead
+  // when we fall behind, and never catches up after returning from
+  // another tab. Missed time stays missed, like a real market.
   useEffect(() => {
     if (state.speed === 0) return;
+    let stop = false;
+    let id = 0;
     const ms = 1250 / state.speed;
-    const id = window.setInterval(() => dispatch({ type: "TICK" }), ms);
-    return () => window.clearInterval(id);
+    const arm = () => {
+      id = window.setTimeout(() => {
+        if (stop) return;
+        if (!document.hidden) dispatch({ type: "TICK" });
+        arm();
+      }, document.hidden ? Math.max(ms, 1000) : ms);
+    };
+    arm();
+    return () => {
+      stop = true;
+      window.clearTimeout(id);
+    };
   }, [state.speed]);
 
   return { state, dispatch, saveStatus };
