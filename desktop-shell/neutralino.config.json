@@ -1,0 +1,29 @@
+{
+  "applicationId": "com.hacvilke.papertrader",
+  "version": "1.0.0",
+  "defaultMode": "window",
+  "port": 0,
+  "documentRoot": "/resources/",
+  "url": "/loader.html",
+  "modes": {
+    "window": {
+      "title": "Paper Trader",
+      "width": 430,
+      "height": 800,
+      "minWidth": 360,
+      "minHeight": 560,
+      "icon": "/resources/icon.png",
+      "enableInspector": false,
+      "borderless": false,
+      "resizable": true,
+      "maximize": false
+    }
+  },
+  "cli": {
+    "binaryName": "PaperTrader",
+    "resourcesPath": "/resources/",
+    "extensionsPath": "/extensions/",
+    "binaryVersion": "6.10.0"
+  },
+  "nativeAllowList": []
+}
