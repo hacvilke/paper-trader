@@ -5,22 +5,28 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Paper Trader</title>
 <style>
-  html, body { margin: 0; height: 100%; }
-  body {
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; background: #5f3c1c; }
+
+  /* the waking sheet — sits on top until the game has actually painted */
+  #veil {
+    position: fixed; inset: 0; z-index: 10;
     background: #7c4f28;
     background-image:
       repeating-linear-gradient(90deg, rgba(30,15,4,.28) 0 2.5px, transparent 2.5px 118px),
       linear-gradient(180deg, #9c6e40, #7c4f28 55%, #5f3c1c);
     display: flex; align-items: center; justify-content: center;
     font-family: "Comic Sans MS", "Segoe Print", cursive;
+    transition: opacity .45s ease;
   }
+  #veil.gone { opacity: 0; pointer-events: none; }
   .sheet {
     width: min(86%, 360px);
     background: #fffdf6;
     border: 1.5px solid #d9c9a6;
     border-radius: 10px;
     box-shadow: 0 14px 30px -14px rgba(30,15,4,.7);
-    padding: 26px 24px 30px;
+    padding: 26px 24px 28px;
     transform: rotate(-1.2deg);
     color: #33291d;
     text-align: center;
@@ -33,29 +39,81 @@
   .sheet::before { left: 18px; transform: rotate(-7deg); }
   .sheet::after { right: 18px; transform: rotate(5deg); }
   h1 { margin: 0 0 4px; font-size: 26px; }
-  .sub { color: #6f6558; font-size: 14px; margin-bottom: 18px; }
+  .sub { color: #6f6558; font-size: 14px; margin-bottom: 16px; }
   .pen { font-size: 30px; animation: w 1.1s ease-in-out infinite alternate; }
   @keyframes w { from { transform: translateY(0) rotate(-8deg); } to { transform: translateY(-5px) rotate(6deg); } }
-  a { color: #2456a6; }
-  .foot { margin-top: 14px; font-size: 12px; color: #6f6558; }
+  .foot { margin-top: 12px; font-size: 12.5px; color: #6f6558; line-height: 1.5; }
+  button {
+    font-family: inherit; font-size: 14px; cursor: pointer;
+    background: #fffdf6; color: #33291d;
+    border: 1.5px solid #b09b74; border-radius: 8px;
+    padding: 7px 14px; margin: 4px 3px 0;
+  }
+  button.prime { background: #1e7a44; color: #fffdf6; border-color: #166034; }
 </style>
 </head>
 <body>
-  <div class="sheet">
-    <h1>Paper Trader</h1>
-    <div class="sub">walking to Moorthy's floor…</div>
-    <div class="pen">✎</div>
-    <div class="foot" id="note">connecting to the live exchange</div>
-    <script>
-      var LIVE = "https://paper-trader-h1ko.onrender.com/";
-      var MIRROR = "https://hacvilke.github.io/paper-trader/";
-      var t = setTimeout(function () {
-        document.getElementById("note").innerHTML =
-          'the floor is taking a while to wake (free servers nap).<br>' +
-          '<a href="' + LIVE + '">retry live</a> · <a href="' + MIRROR + '">open the mirror</a>';
-      }, 6000);
-      location.replace(LIVE);
-    </script>
+  <iframe id="game" src="about:blank"></iframe>
+
+  <div id="veil">
+    <div class="sheet">
+      <h1>Paper Trader</h1>
+      <div class="sub">walking to Moorthy's floor…</div>
+      <div class="pen" id="pen">✎</div>
+      <div class="foot" id="note">connecting to the live exchange</div>
+      <div id="acts"></div>
+    </div>
   </div>
+
+  <script>
+    var LIVE = "https://paper-trader-h1ko.onrender.com/";
+    var MIRROR = "https://hacvilke.github.io/paper-trader/";
+    var frame = document.getElementById("game");
+    var veil = document.getElementById("veil");
+    var note = document.getElementById("note");
+    var pen = document.getElementById("pen");
+    var acts = document.getElementById("acts");
+    var started = false, loaded = false, timer = 0, tries = 0;
+
+    function go(url) {
+      started = true;
+      loaded = false;
+      tries++;
+      veil.classList.remove("gone");
+      pen.style.display = "";
+      note.textContent = tries > 1 ? "knocking again (try " + tries + ")…" : "connecting to the live exchange";
+      acts.innerHTML = "";
+      clearTimeout(timer);
+      frame.src = url + "?t=" + Date.now();
+      timer = setTimeout(slow, 9000);
+    }
+
+    function slow() {
+      if (loaded) return;
+      pen.style.display = "none";
+      note.innerHTML = "the floor is taking a while —<br>free servers nap and need ~40s to wake.";
+      acts.innerHTML = "";
+      var retry = document.createElement("button");
+      retry.textContent = "keep waiting (refresh)";
+      retry.className = "prime";
+      retry.onclick = function () { go(tries % 2 ? LIVE : MIRROR); };
+      var alt = document.createElement("button");
+      alt.textContent = "try the mirror floor";
+      alt.onclick = function () { go(MIRROR); };
+      acts.appendChild(retry);
+      acts.appendChild(alt);
+    }
+
+    frame.addEventListener("load", function () {
+      // about:blank from the initial mount doesn't count
+      if (!started || frame.src === "about:blank") return;
+      loaded = true;
+      clearTimeout(timer);
+      veil.classList.add("gone");
+    });
+
+    // start once the sheet has definitely painted, so it's never blank
+    setTimeout(function () { go(LIVE); }, 450);
+  </script>
 </body>
 </html>
