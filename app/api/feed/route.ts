@@ -3,6 +3,7 @@ import { readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { db } from "@/lib/db";
 import { rateLimit, tooMany } from "@/lib/ratelimit";
+import { safeEq } from "@/lib/sec";
 
 /** The wire — shared ticker of deeds. Supabase-backed, file fallback. */
 const DIR = path.join(process.cwd(), "data");
@@ -55,7 +56,8 @@ export async function POST(req: Request) {
       if (pool) {
         try {
           const r = await pool.query("SELECT h FROM accounts WHERE uname = $1", [user]);
-          return r.rows[0]?.h === token;
+          const h = r.rows[0]?.h;
+          return !!h && safeEq(h, token);
         } catch (e) {
           console.error("feed auth db → file fallback:", e);
         }
@@ -64,7 +66,8 @@ export async function POST(req: Request) {
         const accs = JSON.parse(
           await readFile(path.join(process.cwd(), "data", "accounts.json"), "utf8")
         );
-        return accs[user]?.h === token;
+        const h = accs[user]?.h;
+        return !!h && safeEq(h, token);
       } catch {
         return false;
       }

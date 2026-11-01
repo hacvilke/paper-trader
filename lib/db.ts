@@ -7,7 +7,8 @@ import { Pool } from "pg";
  *
  * Render setup → Environment → add:
  *   DATABASE_URL = <Supabase "Connect" → Session pooler URI, port 5432,
- *                   with your password embedded, &sslmode=require>
+ *                   password embedded, suffixed ?sslmode=no-verify
+ *                   (encrypted; "require" trips pg's cert chain check)>
  */
 let pool: Pool | null = null;
 

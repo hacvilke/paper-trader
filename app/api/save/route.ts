@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 import { db } from "@/lib/db";
 import { rateLimit, tooMany } from "@/lib/ratelimit";
+import { safeEq } from "@/lib/sec";
 
 /**
  * The file cabinet — one save per badge (or the guest slot "main"),
@@ -35,7 +36,8 @@ async function resolveBadge(req: Request): Promise<string | null> {
   if (pool) {
     try {
       const r = await pool.query("SELECT h FROM accounts WHERE uname = $1", [as]);
-      if (r.rows[0]?.h === token) return as;
+      const h = r.rows[0]?.h;
+      if (h && safeEq(h, token)) return as;
       return null;
     } catch (e) {
       console.error("resolveBadge db → file fallback:", e);
@@ -56,7 +58,7 @@ async function fileTarget(req: Request): Promise<string | null> {
     const token = u.searchParams.get("t") ?? "";
     try {
       const acc = JSON.parse(await readFile(ACCOUNTS, "utf8"))[as];
-      if (acc?.h !== token) return null;
+      if (!acc?.h || !safeEq(acc.h, token)) return null;
       return path.join(DIR, "saves", `${as.replace(/[^a-z0-9_-]/gi, "")}.json`);
     } catch {
       return null;
@@ -90,6 +92,9 @@ export async function GET(req: Request) {
 
 async function put(req: Request) {
   if (!rateLimit(req, "save", 30, 60_000)) return tooMany();
+  // cabinet guard: a save is a game state, not a dumping ground
+  const len = Number(req.headers.get("content-length") ?? 0);
+  if (len > 600_000) return NextResponse.json({ ok: false, error: "save too big" }, { status: 413 });
   let body: unknown;
   try {
     body = await req.json();

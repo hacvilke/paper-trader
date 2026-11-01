@@ -4,6 +4,7 @@ import { createHash, randomBytes } from "crypto";
 import path from "path";
 import { db } from "@/lib/db";
 import { rateLimit, tooMany } from "@/lib/ratelimit";
+import { safeEq } from "@/lib/sec";
 
 /**
  * Press-badge auth: trader name + 4-6 digit PIN, hashed (sha256+salt).
@@ -78,7 +79,7 @@ export async function POST(req: Request) {
       try {
         const r = await pool.query("SELECT salt, h FROM accounts WHERE uname = $1", [user]);
         const acc = r.rows[0];
-        if (!acc || acc.h !== hashOf(user, acc.salt, pin))
+        if (!acc || !safeEq(acc.h, hashOf(user, acc.salt, pin)))
           return NextResponse.json({ ok: false, error: "no badge matches that name + PIN" }, { status: 401 });
         return NextResponse.json({ ok: true, user, token: acc.h });
       } catch (e) {
@@ -86,7 +87,7 @@ export async function POST(req: Request) {
       }
     }
     const acc = (await fileAccounts())[user];
-    if (!acc || acc.h !== hashOf(user, acc.salt, pin))
+    if (!acc || !safeEq(acc.h, hashOf(user, acc.salt, pin)))
       return NextResponse.json({ ok: false, error: "no badge matches that name + PIN" }, { status: 401 });
     return NextResponse.json({ ok: true, user, token: acc.h });
   }
