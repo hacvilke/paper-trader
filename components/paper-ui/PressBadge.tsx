@@ -67,7 +67,7 @@ export default function PressBadge({ onClose }: { onClose: () => void }) {
                   back to work
                 </PaperButton>
               </div>
-              <div className={styles.hint}>taking the badge off files future work under “guest”.</div>
+              <div className={styles.hint}>taking the badge off files future work under “guest” — guest paper stays on this device only; a badge carries it everywhere.</div>
             </>
           ) : (
             <>

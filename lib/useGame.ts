@@ -70,6 +70,13 @@ export function useGame(slot: string, token: string): {
     }
 
     (async () => {
+      // guests keep their paper ON THIS DEVICE — the old shared "main"
+      // cabinet meant every new device inherited a stranger's desk
+      if (slot === "main") {
+        readyRef.current = true;
+        setSaveStatus("idle");
+        return;
+      }
       try {
         const r = await window.fetch(target({ slot, token }), { cache: "no-store" });
         if (r.ok) {
@@ -100,6 +107,7 @@ export function useGame(slot: string, token: string): {
       } catch {
         /* ignore */
       }
+      if (slotRef.current.slot === "main") return;
       window
         .fetch(target(slotRef.current), {
           method: "PUT",
@@ -125,6 +133,10 @@ export function useGame(slot: string, token: string): {
       } catch {
         /* ignore */
       }
+      if (slotRef.current.slot === "main") {
+        setSaveStatus("idle");
+        return;
+      }
       setSaveStatus("saving");
       window
         .fetch(target(slotRef.current), {
@@ -148,6 +160,7 @@ export function useGame(slot: string, token: string): {
       } catch {
         /* ignore */
       }
+      if (slotRef.current.slot === "main") return;
       try {
         navigator.sendBeacon(target(slotRef.current), new Blob([JSON.stringify(s)], { type: "application/json" }));
       } catch {
