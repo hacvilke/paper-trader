@@ -1254,7 +1254,7 @@ export function reducer(state: GameState, action: Action): GameState {
           const pay = round2(h.qty * st.price * st.divY);
           dividendCash = round2(dividendCash + pay);
           dividendNews.push(
-            mkNews(st, `DIVIDEND: ${st.name} paid you $${pay.toFixed(2)} — $${(st.divY * 100).toFixed(1)}% per share you hold.`, "good", state.seq + 100 + dividendNews.length)
+            mkNews(st, `DIVIDEND: ${st.name} — one of the Magnate\u0027s steady payers — paid you $${pay.toFixed(2)} ($${(st.divY * 100).toFixed(1)}% per share you hold).`, "good", state.seq + 100 + dividendNews.length)
           );
         }
       }

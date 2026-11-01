@@ -52,7 +52,7 @@ export default function Magnate({
       amount: bonus,
       day,
       payee: "you, baron",
-      memo: `re: ${best.sym} ${(best.pct * 100).toFixed(0)}% and climbing — back the best stock. — The Magnate`,
+      memo: `re: ${best.sym} ${(best.pct * 100).toFixed(0)}% and climbing — back the best stock. You know my other firms: the ones that pay the till. — The Magnate`,
       onSign: () => {
         onReceive(bonus);
         setPhase("bye");
