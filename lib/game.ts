@@ -709,6 +709,9 @@ export function simFactory(f0: Factory, day: number): Factory {
   f.reamsSold += sold;
   const revenue = Math.round(sold * f.price * 100) / 100;
   f.revenue = Math.round((f.revenue + revenue) * 100) / 100;
+  // THE FIX: sales proceeds land in the till — before this, revenue was
+  // counted on the books but the cash never arrived (till bled dues only)
+  f.cash = Math.round((f.cash + revenue) * 100) / 100;
 
   // costs
   let dues = Math.round((f.workers * ind.wage + f.machines * FACT_MAINT) * 100) / 100;
