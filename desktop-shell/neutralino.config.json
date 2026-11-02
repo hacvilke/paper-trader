@@ -1,6 +1,6 @@
 {
   "applicationId": "com.hacvilke.papertrader",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "defaultMode": "window",
   "port": 0,
   "documentRoot": "/resources/",
@@ -16,7 +16,11 @@
       "enableInspector": false,
       "borderless": false,
       "resizable": true,
-      "maximize": false
+      "maximize": false,
+      "useSavedState": false,
+      "x": 60,
+      "y": 40,
+      "hidden": false
     }
   },
   "cli": {
