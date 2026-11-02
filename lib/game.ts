@@ -605,9 +605,15 @@ export function makeProcStock(existingSyms: string[]): Stock {
     if (!sym.includes(ch)) sym += ch;
   }
   while (sym.length < 3) sym += String.fromCharCode(65 + Math.floor(Math.random() * 26));
+  // keep 3 base letters + a growing digit so the candidate ALWAYS
+  // changes — a 4-letter sym + suffix sliced back to 4 spun forever
+  // (the notorious hard freeze)
   let n = 2;
+  let guard = 0;
   let candidate = sym.slice(0, 4);
-  while (existingSyms.includes(candidate)) candidate = (sym + n++).slice(0, 4);
+  while (existingSyms.includes(candidate) && guard++ < 60) {
+    candidate = (sym.slice(0, 3) + n++).slice(0, 4);
+  }
   sym = candidate;
 
   const roll = Math.random();
