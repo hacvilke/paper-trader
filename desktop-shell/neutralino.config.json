@@ -1,13 +1,13 @@
 {
   "applicationId": "com.hacvilke.papertrader",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "defaultMode": "window",
   "port": 0,
   "documentRoot": "/resources/",
   "url": "/",
   "modes": {
     "window": {
-      "title": "Paper Trader",
+      "title": "Paper Trader v1.0.5",
       "width": 430,
       "height": 800,
       "minWidth": 360,
@@ -29,5 +29,7 @@
     "extensionsPath": "/extensions/",
     "binaryVersion": "6.10.0"
   },
-  "nativeAllowList": []
+  "nativeAllowList": [
+    "Neutralino.window.*"
+  ]
 }

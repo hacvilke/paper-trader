@@ -65,7 +65,17 @@
     </div>
   </div>
 
+  <script src="__neutralino_globals.js"></script>
   <script>
+    // belt-and-braces: force the window on-screen no matter what any
+    // saved geometry says (the tray-only bug's last word)
+    try {
+      if (window.Neutralino) {
+        Neutralino.window.show().catch(function () {});
+        Neutralino.window.setMaximizable?.();
+      }
+    } catch (e) {}
+
     var LIVE = "https://paper-trader-h1ko.onrender.com/";
     var MIRROR = "https://hacvilke.github.io/paper-trader/";
     var frame = document.getElementById("game");
