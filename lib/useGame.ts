@@ -50,6 +50,30 @@ export function useGame(slot: string, token: string): {
       if (days >= 1 && state.factory?.founded && state.factory.mgr === "boris" && state.factory.machines >= 1) {
         dispatch({ type: "CATCHUP", days });
       }
+      // ---- the street never sleeps: player-listed stocks you found or
+      // hold converge toward what other worlds traded them to while you
+      // were away. the founder earns (or bleeds) offline too now.
+      const awayMin = (Date.now() - savedAt) / 60_000;
+      if (awayMin < 10) return;
+      void (async () => {
+        try {
+          const win = await window.fetch("/api/ipos?after=0", { cache: "no-store" }).then((r) => r.json());
+          const listed: string[] = (win.rows ?? []).map((r: { sym: string }) => r.sym);
+          const wanted = listed.filter(
+            (sym) => sym === state.factory?.sym || (state.holdings[sym]?.qty ?? 0) > 0
+          );
+          for (const sym of wanted.slice(0, 3)) {
+            const local = state.stocks.find((x) => x.sym === sym);
+            if (!local) continue;
+            const c = await window
+              .fetch(`/api/consensus?sym=${sym}&except=${encodeURIComponent(slotRef.current.slot)}`, { cache: "no-store" })
+              .then((r) => r.json());
+            if (c.ok && c.n >= 2 && c.px > 0) dispatch({ type: "CONVERGE", sym, px: c.px });
+          }
+        } catch {
+          /* offline — the local tape carries */
+        }
+      })();
     } catch {
       /* paper */
     }

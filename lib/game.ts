@@ -283,6 +283,7 @@ export type Action =
   | { type: "HIRE_MGR"; id: string }
   | { type: "FIRE_MGR" }
   | { type: "CATCHUP"; days: number }
+  | { type: "CONVERGE"; sym: string; px: number }
   | { type: "HYDRATE"; state: GameState };
 
 const DEFS: Array<
@@ -1684,6 +1685,45 @@ export function reducer(state: GameState, action: Action): GameState {
         factory: { ...f, mgr: undefined, cash: round2(f.cash - sev), costs: round2(f.costs + sev), morale: Math.max(0, f.morale - 4) },
         news: [...fireNews, ...state.news].slice(0, 16),
         seq: state.seq + 1,
+      };
+    }
+
+    case "CONVERGE": {
+      const st = state.stocks.find((x) => x.sym === action.sym);
+      if (!st || !(action.px > 0) || !isFinite(action.px)) return state;
+      // blend 60% of the way to the street's median, clamped ±25% per
+      // return — the shared market is real, but it doesn't teleport
+      let np = st.price + (action.px - st.price) * 0.6;
+      if (np > st.price * 1.25) np = st.price * 1.25;
+      if (np < st.price * 0.75) np = st.price * 0.75;
+      np = round2(Math.max(0.5, np));
+      const move = (np - st.price) / st.price;
+      if (Math.abs(move) < 0.005) return state;
+      const news: NewsItem[] =
+        Math.abs(move) >= 0.02
+          ? [{
+              id: state.seq, day: dayOf(state.tick), time: timeOf(state.tick), sym: st.sym,
+              tone: move > 0 ? "good" : "bad",
+              text: `The street never sleeps: ${st.name} traded to $${np.toFixed(2)} in other worlds while you were away — your tape catches up (${move > 0 ? "+" : ""}${(move * 100).toFixed(1)}%).`,
+            }]
+          : [];
+      return {
+        ...state,
+        stocks: state.stocks.map((x) =>
+          x.sym === st.sym
+            ? {
+                ...x,
+                prev: x.price,
+                price: np,
+                high: Math.max(x.high, np),
+                low: Math.min(x.low, np),
+                volNow: Math.min(x.vol * 3, x.volNow * 1.4),
+                hist: [...x.hist, np].slice(-64),
+              }
+            : x
+        ),
+        news: [...news, ...state.news].slice(0, 16),
+        seq: state.seq + news.length,
       };
     }
 
