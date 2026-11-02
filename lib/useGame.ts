@@ -37,8 +37,22 @@ export function useGame(slot: string, token: string): {
   const stateRef = useRef(state);
   const slotRef = useRef({ slot, token });
 
+  const catchupDoneRef = useRef(false);
   useEffect(() => {
     stateRef.current = state;
+    // the night shift: once the desk is loaded and committed, credit
+    // Boris's floor work while you were away (1 day per 30 real minutes, max 3)
+    if (!readyRef.current || catchupDoneRef.current) return;
+    catchupDoneRef.current = true;
+    try {
+      const savedAt = Number((state as { savedAt?: number }).savedAt ?? Date.now());
+      const days = Math.floor((Date.now() - savedAt) / (30 * 60 * 1000));
+      if (days >= 1 && state.factory?.founded && state.factory.mgr === "boris" && state.factory.machines >= 1) {
+        dispatch({ type: "CATCHUP", days });
+      }
+    } catch {
+      /* paper */
+    }
   }, [state]);
   useEffect(() => {
     slotRef.current = { slot, token };
@@ -93,23 +107,8 @@ export function useGame(slot: string, token: string): {
       }
       readyRef.current = true;
       setSaveStatus("idle");
-      // the night shift: if Boris is on the payroll, credit the floor's
-      // work while you were away (1 catch-up day per 30 real minutes, max 3)
-      try {
-        const st = stateRef.current as typeof stateRef.current & { savedAt?: number };
-        const awayMs = Date.now() - (st.savedAt ?? Date.now());
-        const days = Math.floor(awayMs / (30 * 60 * 1000));
-        if (
-          days >= 1 &&
-          st.factory?.founded &&
-          st.factory.mgr === "boris" &&
-          st.factory.machines >= 1
-        ) {
-          dispatch({ type: "CATCHUP", days });
-        }
-      } catch {
-        /* paper */
-      }
+      // (the night-shift check runs in the state-sync effect below —
+      //  here stateRef is still the PRE-hydration desk, so it must not)
     })();
   }, [slot, token]);
 

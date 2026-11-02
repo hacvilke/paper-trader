@@ -97,6 +97,7 @@ export type Factory = {
   founded: boolean;
   ind: string; // industry id — every business rolls its own economics
   mgr?: string; // hired manager (MANAGERS.id) — one desk, one boss
+  mgrGain?: number; // $ of value the manager has added since signing
   cash: number;
   reams: number;
   price: number;
@@ -697,7 +698,12 @@ export function simFactory(f0: Factory, day: number): Factory {
   const staffing = Math.min(1, f.workers / Math.max(1, f.machines * 2));
   const strike = f.morale < 25;
   let made = Math.round(f.machines * ind.out * staffing * (0.6 + f.morale / 250));
-  if (f.mgr === "marge" && staffing >= 1) made = Math.round(made * 1.1); // the forewoman squeezes the presses
+  let mgrGainToday = 0;
+  if (f.mgr === "marge" && staffing >= 1) {
+    const boost = Math.round(made * 0.1); // the forewoman squeezes the presses
+    made += boost;
+    mgrGainToday += boost * f.price;
+  }
   if (strike) made = Math.round(made / 2);
   f.reams += made;
 
@@ -707,6 +713,7 @@ export function simFactory(f0: Factory, day: number): Factory {
   const sold = Math.min(f.reams, demand);
   f.reams -= sold;
   f.reamsSold += sold;
+  if (f.mgr === "otto") mgrGainToday += Math.min(5, sold) * f.price; // the salesman's extra orders
   const revenue = Math.round(sold * f.price * 100) / 100;
   f.revenue = Math.round((f.revenue + revenue) * 100) / 100;
   // THE FIX: sales proceeds land in the till — before this, revenue was
@@ -715,7 +722,10 @@ export function simFactory(f0: Factory, day: number): Factory {
 
   // costs
   let dues = Math.round((f.workers * ind.wage + f.machines * FACT_MAINT) * 100) / 100;
-  if (f.mgr === "penny") dues = Math.round(dues * 0.88);
+  if (f.mgr === "penny") {
+    mgrGainToday += Math.round(dues * 0.12 * 100) / 100; // the accountant finds money in the margins
+    dues = Math.round(dues * 0.88);
+  }
   if (f.mgr) dues += MANAGERS.find((m) => m.id === f.mgr)?.wage ?? 0; // a boss costs money too
   let paid = dues;
   if (f.cash >= dues) {
@@ -752,6 +762,15 @@ export function simFactory(f0: Factory, day: number): Factory {
     f.emergencies += 1;
     f.rep = Math.max(0, f.rep - 2);
     note(`Moorthy's mercy overdraft: +$${FACT_EMERGENCY_AID}. The moose sighs. (${f.emergencies} time${f.emergencies === 1 ? "" : "s"})`, "info");
+  }
+
+  // the manager's running tab — visible on the desk card, shift report every 5 days
+  if (f.mgr) {
+    f.mgrGain = Math.round(((f.mgrGain ?? 0) + mgrGainToday) * 100) / 100;
+    if (f.day > 0 && f.day % 5 === 0) {
+      const m = MANAGERS.find((x) => x.id === f.mgr);
+      note(`${m?.name.split(" ")[0] ?? "The manager"}'s shift report: $${(f.mgrGain ?? 0).toFixed(2)} of value on the books since signing.`, "info");
+    }
   }
 
   const net = Math.round((revenue - paid) * 100) / 100;
@@ -1645,7 +1664,7 @@ export function reducer(state: GameState, action: Action): GameState {
       }];
       return {
         ...state,
-        factory: { ...f, mgr: m.id, cash: round2(f.cash - signing), costs: round2(f.costs + signing), morale: Math.min(100, f.morale + 3) },
+        factory: { ...f, mgr: m.id, mgrGain: 0, cash: round2(f.cash - signing), costs: round2(f.costs + signing), morale: Math.min(100, f.morale + 3) },
         news: [...hireNews, ...state.news].slice(0, 16),
         seq: state.seq + 1,
       };

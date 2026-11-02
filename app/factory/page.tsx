@@ -606,6 +606,10 @@ export default function FactoryPage() {
                       <span className={styles.mgrWho}>
                         <b>{cur.name}</b> — {cur.role} · ${cur.wage}/day
                         <div className={styles.mgrBlurb}>{cur.blurb}</div>
+                        <div className={styles.mgrBlurb}>
+                          value on the books since signing:{" "}
+                          <b>${(f.mgrGain ?? 0).toFixed(2)}</b>
+                        </div>
                       </span>
                       <PaperButton
                         small
