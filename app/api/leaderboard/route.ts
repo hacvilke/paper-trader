@@ -37,7 +37,9 @@ export async function GET() {
       // ---- street prices for player-listed companies ----
       const street: Record<string, number> = {};
       try {
-        const listed = await pool.query("SELECT sym FROM biz WHERE listed = true");
+        const listed = await pool.query("SELECT sym, fair FROM biz WHERE listed = true");
+        const fairOf: Record<string, number> = {};
+        for (const { sym, fair } of listed.rows) if (Number(fair) > 0) fairOf[sym] = Number(fair);
         const fresh = r.rows.filter(
           (x) => Number(x.saved_at) > Date.now() - 7 * 24 * 3600_000
         );
@@ -52,8 +54,11 @@ export async function GET() {
           if (prices.length >= 2) {
             prices.sort((a, b) => a - b);
             const mid = Math.floor(prices.length / 2);
-            street[sym] =
+            let p =
               prices.length % 2 ? prices[mid] : Math.round(((prices[mid - 1] + prices[mid]) / 2) * 100) / 100;
+            const fair = fairOf[sym];
+            if (fair > 0) p = Math.min(Math.max(p, fair * 0.5), fair * 2); // fundamentals anchor the street
+            street[sym] = p;
           }
         }
       } catch (e) {

@@ -25,7 +25,17 @@ export async function GET(req: Request) {
     );
     const px = Number(r.rows[0]?.px ?? 0);
     const n = Number(r.rows[0]?.n ?? 0);
-    return NextResponse.json({ ok: true, n, px: Math.round(px * 100) / 100 });
+    // anchor: the founder's published fair value keeps the street honest —
+    // thin samples that include the asker's own outlier must not run away
+    let target = px;
+    try {
+      const f = await pool.query("SELECT fair FROM biz WHERE sym = $1", [sym]);
+      const fair = Number(f.rows[0]?.fair ?? 0);
+      if (fair > 0) target = Math.min(Math.max(px, fair * 0.5), fair * 2);
+    } catch {
+      /* no fair known — raw median */
+    }
+    return NextResponse.json({ ok: true, n, px: Math.round(px * 100) / 100, target: Math.round(target * 100) / 100 });
   } catch (e) {
     console.error("consensus db:", e);
     return NextResponse.json({ ok: true, n: 0 });

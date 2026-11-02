@@ -14,12 +14,12 @@ export async function GET(req: Request) {
   if (pool) {
     try {
       const r = await pool.query(
-        "SELECT sym, uname, name, px, listed_at FROM biz WHERE listed = true AND listed_at > $1 ORDER BY listed_at ASC LIMIT 20",
+        "SELECT sym, uname, name, px, fair, listed_at FROM biz WHERE listed = true AND listed_at > $1 ORDER BY listed_at ASC LIMIT 20",
         [after]
       );
       return NextResponse.json({
         ok: true,
-        rows: r.rows.map((x) => ({ sym: x.sym, uname: x.uname, name: x.name, px: Number(x.px), at: Number(x.listed_at) })),
+        rows: r.rows.map((x) => ({ sym: x.sym, uname: x.uname, name: x.name, px: Number(x.px), fair: Number(x.fair ?? 0), at: Number(x.listed_at) })),
       });
     } catch (e) {
       console.error("ipos db:", e);

@@ -114,6 +114,22 @@ async function put(req: Request) {
         "INSERT INTO saves (uname, state, saved_at) VALUES ($1,$2,$3) ON CONFLICT (uname) DO UPDATE SET state=$2, saved_at=$3",
         [key, JSON.stringify(body), Date.now()]
       );
+      // keep the street honest: publish the founder's fundamental fair
+      // value (ratchets up only — companies grow, they don't shrink)
+      try {
+        const f = (body as { factory?: { founded?: boolean; listed?: boolean; sym?: string; cash?: number; history?: number[]; rep?: number } }).factory;
+        if (f?.founded && f.listed && f.sym && Array.isArray(f.history)) {
+          const last = f.history.slice(-10);
+          const avg = last.length ? last.reduce((a, b) => a + b, 0) / last.length : 0;
+          const fair = Math.max(1, Math.round(((f.cash ?? 0) + 30 * avg + (f.rep ?? 0)) / 100) * 100) / 100;
+          await pool.query(
+            "UPDATE biz SET fair = GREATEST(COALESCE(fair, 0), $2) WHERE sym = $1",
+            [f.sym, fair]
+          );
+        }
+      } catch (e) {
+        console.error("fair update:", e);
+      }
       return NextResponse.json({ ok: true });
     } catch (e) {
       console.error("save PUT db → file fallback:", e);

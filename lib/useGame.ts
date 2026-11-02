@@ -68,7 +68,8 @@ export function useGame(slot: string, token: string): {
             const c = await window
               .fetch(`/api/consensus?sym=${sym}&except=${encodeURIComponent(slotRef.current.slot)}`, { cache: "no-store" })
               .then((r) => r.json());
-            if (c.ok && c.n >= 2 && c.px > 0) dispatch({ type: "CONVERGE", sym, px: c.px });
+            const target = Number(c.target ?? c.px);
+            if (c.ok && c.n >= 2 && target > 0) dispatch({ type: "CONVERGE", sym, px: target });
           }
         } catch {
           /* offline — the local tape carries */
