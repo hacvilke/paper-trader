@@ -123,8 +123,8 @@ async function put(req: Request) {
           const avg = last.length ? last.reduce((a, b) => a + b, 0) / last.length : 0;
           const fair = Math.max(1, Math.round(((f.cash ?? 0) + 30 * avg + (f.rep ?? 0)) / 100) * 100) / 100;
           await pool.query(
-            "UPDATE biz SET fair = GREATEST(COALESCE(fair, 0), $2) WHERE sym = $1",
-            [f.sym, fair]
+            "UPDATE biz SET fair = GREATEST(COALESCE(fair, 0), $2) WHERE sym = $1 AND uname = $3",
+            [f.sym, fair, key]
           );
         }
       } catch (e) {
