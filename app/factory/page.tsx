@@ -11,7 +11,7 @@ import { useToast } from "@/lib/toast";
 import { useChecks } from "@/lib/checks";
 import { useMarket } from "@/lib/market";
 import { useAuth } from "@/lib/auth";
-import { INDUSTRIES, industryOf, symFromName } from "@/lib/game";
+import { INDUSTRIES, MANAGERS, industryOf, symFromName } from "@/lib/game";
 import {
   FACT_ADVERT_COST,
   FACT_BONUS_PER_WORKER,
@@ -591,6 +591,69 @@ export default function FactoryPage() {
                 </div>
               </PaperSheet>
             )}
+
+            <PaperSheet tape="pin" rotation={0.5} className={styles.mgrSheet}>
+              <h2 className={styles.h2}>
+                <Hint text="A manager runs the floor with you: a steady perk, a daily wage, a one-time signing bonus. One desk — one boss at a time. Boris keeps the floor running while you're away.">
+                  the manager&apos;s desk
+                </Hint>
+              </h2>
+              {(() => {
+                const cur = MANAGERS.find((m) => m.id === f.mgr);
+                if (cur)
+                  return (
+                    <div className={styles.mgrRow}>
+                      <span className={styles.mgrWho}>
+                        <b>{cur.name}</b> — {cur.role} · ${cur.wage}/day
+                        <div className={styles.mgrBlurb}>{cur.blurb}</div>
+                      </span>
+                      <PaperButton
+                        small
+                        tone="red"
+                        fx="x"
+                        title={`severance $${cur.wage * 3}`}
+                        onClick={() => {
+                          dispatch({ type: "FIRE_MGR" });
+                          wire(`${cur.name} cleared their desk at ${f.name}`);
+                          toast(`${cur.name} is out. Severance paid.`, "info");
+                        }}
+                      >
+                        fire
+                      </PaperButton>
+                    </div>
+                  );
+                return (
+                  <div className={styles.mgrList}>
+                    {MANAGERS.map((m) => (
+                      <div key={m.id} className={styles.mgrRow}>
+                        <span className={styles.mgrWho}>
+                          <b>{m.name}</b> — {m.role} · ${m.wage}/day + ${m.wage * 5} signing
+                          <div className={styles.mgrBlurb}>{m.blurb}</div>
+                        </span>
+                        <PaperButton
+                          small
+                          tone="green"
+                          title={
+                            f.cash >= m.wage * 5
+                              ? "sign the contract"
+                              : `the till needs $${m.wage * 5} for signing`
+                          }
+                          onClick={() => {
+                            if (f.cash < m.wage * 5)
+                              return toast(`Signing costs $${m.wage * 5} — the till is short.`, "bad");
+                            dispatch({ type: "HIRE_MGR", id: m.id });
+                            wire(`hired ${m.name} as ${m.role} of ${f.name}`);
+                            toast(`${m.name} takes the ${m.role} desk. Welcome aboard.`, "good");
+                          }}
+                        >
+                          hire
+                        </PaperButton>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </PaperSheet>
 
             <div className={styles.gossip}>
               {f.news.slice(0, 3).map((n, i) => (

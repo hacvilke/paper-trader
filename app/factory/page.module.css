@@ -425,3 +425,40 @@
   color: var(--pencil);
   font-size: 16px;
 }
+
+.mgrSheet {
+  margin-top: 12px;
+}
+
+.mgrList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mgrRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 2px;
+  border-bottom: 1px dashed rgba(59, 37, 15, 0.2);
+}
+
+.mgrRow:last-child {
+  border-bottom: none;
+}
+
+.mgrWho {
+  font-family: var(--font-hand);
+  font-weight: 600;
+  font-size: 17px;
+  line-height: 1.25;
+}
+
+.mgrBlurb {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--pencil);
+}

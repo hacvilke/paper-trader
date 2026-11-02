@@ -68,6 +68,15 @@ export const INDUSTRIES: Industry[] = [
   { id: "sport",  label: "Sports Goods",    unit: "kits",   fair: 7.5, wage: 3.0, demand: 10, out: 12, mach0: 190, blurb: "sports equipment — margins you can bounce." },
 ];
 
+// ---- the manager's desk: hire one boss to run the floor with you ----
+export type Manager = { id: string; name: string; role: string; wage: number; blurb: string };
+export const MANAGERS: Manager[] = [
+  { id: "marge", name: "Marge Stapler",   role: "forewoman",  wage: 10, blurb: "+10% units when the floor is fully staffed. Runs a tight press." },
+  { id: "otto",  name: "Otto Pressworth", role: "salesman",   wage: 12, blurb: "+5 demand every day. Could sell paper to the moose." },
+  { id: "penny", name: "Penny Ledger",    role: "accountant", wage: 8,  blurb: "Dues cut 12%. Finds money in the margins." },
+  { id: "boris", name: "Boris Inkman",    role: "night shift", wage: 16, blurb: "Keeps the floor RUNNING while you're away (up to 3 days credited on return)." },
+];
+
 export const industryOf = (f: Factory) =>
   INDUSTRIES.find((i) => i.id === f.ind) ?? INDUSTRIES[0];
 export const IPO_DAY = 10; // business days before you may list
@@ -87,6 +96,7 @@ export type Factory = {
   sym: string; // its ticker, reserved globally at founding
   founded: boolean;
   ind: string; // industry id — every business rolls its own economics
+  mgr?: string; // hired manager (MANAGERS.id) — one desk, one boss
   cash: number;
   reams: number;
   price: number;
@@ -269,6 +279,9 @@ export type Action =
   | { type: "PLACE_SLIP"; sym: string; side: "BUY" | "SELL"; qty: number; price: number }
   | { type: "CANCEL_SLIP"; id: number }
   | { type: "LIST_FOREIGN"; listings: Array<{ sym: string; uname: string; name: string; px: number; at: number }> }
+  | { type: "HIRE_MGR"; id: string }
+  | { type: "FIRE_MGR" }
+  | { type: "CATCHUP"; days: number }
   | { type: "HYDRATE"; state: GameState };
 
 const DEFS: Array<
@@ -684,12 +697,13 @@ export function simFactory(f0: Factory, day: number): Factory {
   const staffing = Math.min(1, f.workers / Math.max(1, f.machines * 2));
   const strike = f.morale < 25;
   let made = Math.round(f.machines * ind.out * staffing * (0.6 + f.morale / 250));
+  if (f.mgr === "marge" && staffing >= 1) made = Math.round(made * 1.1); // the forewoman squeezes the presses
   if (strike) made = Math.round(made / 2);
   f.reams += made;
 
   // demand & sales
   const pf = Math.min(2.4, Math.max(0.12, Math.pow(ind.fair / f.price, 1.35)));
-  const demand = Math.round((ind.demand + f.rep * 0.45 + f.ads * 15) * pf);
+  const demand = Math.round((ind.demand + f.rep * 0.45 + f.ads * 15 + (f.mgr === "otto" ? 5 : 0)) * pf);
   const sold = Math.min(f.reams, demand);
   f.reams -= sold;
   f.reamsSold += sold;
@@ -697,7 +711,9 @@ export function simFactory(f0: Factory, day: number): Factory {
   f.revenue = Math.round((f.revenue + revenue) * 100) / 100;
 
   // costs
-  const dues = Math.round((f.workers * ind.wage + f.machines * FACT_MAINT) * 100) / 100;
+  let dues = Math.round((f.workers * ind.wage + f.machines * FACT_MAINT) * 100) / 100;
+  if (f.mgr === "penny") dues = Math.round(dues * 0.88);
+  if (f.mgr) dues += MANAGERS.find((m) => m.id === f.mgr)?.wage ?? 0; // a boss costs money too
   let paid = dues;
   if (f.cash >= dues) {
     f.cash = Math.round((f.cash - dues) * 100) / 100;
@@ -1611,6 +1627,57 @@ export function reducer(state: GameState, action: Action): GameState {
         ...state,
         factory: { ...f, cash: round2(f.cash - cost), costs: round2(f.costs + cost), morale: Math.min(100, f.morale + 12) },
       };
+    }
+
+    case "HIRE_MGR": {
+      const f = state.factory;
+      if (!f.founded || f.mgr) return state; // one desk, one boss
+      const m = MANAGERS.find((x) => x.id === action.id);
+      if (!m) return state;
+      const signing = m.wage * 5;
+      if (f.cash < signing) return state;
+      const hireNews: NewsItem[] = [{
+        id: state.seq, day: dayOf(state.tick), time: timeOf(state.tick), sym: "", tone: "good",
+        text: `${m.name} signs on as ${m.role} of ${f.name}. The floor has a boss.`,
+      }];
+      return {
+        ...state,
+        factory: { ...f, mgr: m.id, cash: round2(f.cash - signing), costs: round2(f.costs + signing), morale: Math.min(100, f.morale + 3) },
+        news: [...hireNews, ...state.news].slice(0, 16),
+        seq: state.seq + 1,
+      };
+    }
+
+    case "FIRE_MGR": {
+      const f = state.factory;
+      if (!f.mgr) return state;
+      const m = MANAGERS.find((x) => x.id === f.mgr);
+      const sev = Math.min(f.cash, (m?.wage ?? 0) * 3);
+      const fireNews: NewsItem[] = [{
+        id: state.seq, day: dayOf(state.tick), time: timeOf(state.tick), sym: "", tone: "bad",
+        text: `${m?.name ?? "The manager"} clears their desk at ${f.name}. Severance paid, the floor grumbles.`,
+      }];
+      return {
+        ...state,
+        factory: { ...f, mgr: undefined, cash: round2(f.cash - sev), costs: round2(f.costs + sev), morale: Math.max(0, f.morale - 4) },
+        news: [...fireNews, ...state.news].slice(0, 16),
+        seq: state.seq + 1,
+      };
+    }
+
+    case "CATCHUP": {
+      const f0 = state.factory;
+      if (!f0?.founded || f0.mgr !== "boris" || f0.machines < 1) return state;
+      const days = Math.max(1, Math.min(3, Math.floor(action.days)));
+      const before = f0.cash;
+      let f = f0;
+      for (let d = 0; d < days; d++) f = simFactory(f, dayOf(state.tick) + d);
+      const net = Math.round((f.cash - before) * 100) / 100;
+      const catchNews: NewsItem[] = [{
+        id: state.seq, day: dayOf(state.tick), time: timeOf(state.tick), sym: "", tone: net >= 0 ? "good" : "bad",
+        text: `The night shift ran ${days} day${days === 1 ? "" : "s"} while you were away: ${net >= 0 ? "+" : ""}${fmtMoney(net)} on the factory paper.`,
+      }];
+      return { ...state, factory: f, news: [...catchNews, ...state.news].slice(0, 16), seq: state.seq + 1 };
     }
 
     case "FACT_ADVERT": {

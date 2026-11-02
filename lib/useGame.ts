@@ -93,6 +93,23 @@ export function useGame(slot: string, token: string): {
       }
       readyRef.current = true;
       setSaveStatus("idle");
+      // the night shift: if Boris is on the payroll, credit the floor's
+      // work while you were away (1 catch-up day per 30 real minutes, max 3)
+      try {
+        const st = stateRef.current as typeof stateRef.current & { savedAt?: number };
+        const awayMs = Date.now() - (st.savedAt ?? Date.now());
+        const days = Math.floor(awayMs / (30 * 60 * 1000));
+        if (
+          days >= 1 &&
+          st.factory?.founded &&
+          st.factory.mgr === "boris" &&
+          st.factory.machines >= 1
+        ) {
+          dispatch({ type: "CATCHUP", days });
+        }
+      } catch {
+        /* paper */
+      }
     })();
   }, [slot, token]);
 
